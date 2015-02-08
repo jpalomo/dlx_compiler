@@ -1,0 +1,6 @@
+//Simple parsing test
+main 
+{
+    let x <- 51;
+	let y <- 2 * x
+}.

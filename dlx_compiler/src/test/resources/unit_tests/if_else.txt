@@ -1,0 +1,10 @@
+main
+var a, b, d;
+{
+	if a < 0 then
+		let b <- 1
+	else 
+		let a <- 1
+	fi;
+	let d <- 2
+}.

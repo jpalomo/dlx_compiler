@@ -1,0 +1,11 @@
+main
+{
+	let i <- 0;
+	while i < 10 do
+		let y <- y + 2;
+		let z <- x + 2;
+		let d <- y + z;
+		let i <- i + 1
+	od;
+	return d
+}.

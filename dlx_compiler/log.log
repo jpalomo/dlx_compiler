@@ -1,0 +1,21 @@
+ INFO [main] (Instruction.java:248) - 1: MOVE    arg   a1
+ INFO [main] (Instruction.java:248) - 2: MOVE    arg   a2
+ INFO [main] (Instruction.java:248) - 3: MOVE    arg   a3
+ INFO [main] (Instruction.java:248) - 4: MOVE    arg   a4
+ INFO [main] (Instruction.java:248) - 5: MOVE    arg   a5
+ INFO [main] (Instruction.java:248) - 6: MOVE   size   #5
+ INFO [main] (Instruction.java:248) - 7: MOVE      i   #2
+ INFO [main] (Instruction.java:248) - 8: MOVE   temp  arg
+ INFO [main] (Instruction.java:248) - 9: CMP       i size
+ INFO [main] (Instruction.java:248) - 10: CMP     arg temp
+ INFO [main] (Instruction.java:248) - 11: BLE    (10)     
+ INFO [main] (Instruction.java:248) - 12: MOVE   temp  arg
+ INFO [main] (Instruction.java:248) - 13: ADD       i   #1
+ INFO [main] (Instruction.java:248) - 14: MOVE      i   13
+ INFO [main] (Instruction.java:248) - 16: MOVE   input  #22
+ INFO [main] (Instruction.java:248) - 17: MOVE   input  #61
+ INFO [main] (Instruction.java:248) - 18: MOVE   input  #17
+ INFO [main] (Instruction.java:248) - 19: MOVE   input  #34
+ INFO [main] (Instruction.java:248) - 20: MOVE   input  #11
+ INFO [main] (Instruction.java:248) - 21: SAVE_STATUS          
+ INFO [main] (Instruction.java:248) - 22: CALL    max     
