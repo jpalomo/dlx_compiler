@@ -8,6 +8,7 @@ import compiler.components.lex.Token;
 import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
 
+//Test clas for the parser functionality
 public class TestParser {
 
 	@Test
