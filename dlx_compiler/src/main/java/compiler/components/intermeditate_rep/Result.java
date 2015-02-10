@@ -1,5 +1,8 @@
 package compiler.components.intermeditate_rep;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Result {
 	public ResultEnum type = null;
 	public Integer constValue = null;
@@ -9,6 +12,8 @@ public class Result {
 	public Integer instrNum = null;
 	public String funcName = null;
 
+	public List<Result> arrayExprs = null;
+
 	public static final Result EMPTY_RESULT = new Result(ResultEnum.EMPTY);
 	
 	public enum ResultEnum {
@@ -17,21 +22,22 @@ public class Result {
 
 	public Result(ResultEnum type){
 		this.type = type;
+		arrayExprs = new ArrayList<Result>();
 	}
 
 	public Result() {
-		
+	   this(ResultEnum.EMPTY); 
 	}
 
 	public String toString(){
 		if(type.equals(ResultEnum.CONSTANT)) {
-			return constValue.toString();
+			return "#" + constValue.toString();
 		}
 		if(type.equals(ResultEnum.VARIABLE)) {
 			return varValue;
 		}
 		if(type.equals(ResultEnum.INSTR)) {
-			return instrNum.toString();
+			return "(" + instrNum.toString() + ")";
 		}
 		if(type.equals(ResultEnum.CONDITION)) {
 			return conditionValue;

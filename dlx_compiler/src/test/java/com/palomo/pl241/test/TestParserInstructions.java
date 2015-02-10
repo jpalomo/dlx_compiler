@@ -49,7 +49,7 @@ public class TestParserInstructions {
 
 	}
 	
-	@Test  //passing
+	@Test  
 	public void test006() throws ParsingException{
 		Parser parser = new Parser("src/test/resources/test006.txt"); 
 		parser.parse();
@@ -65,7 +65,7 @@ public class TestParserInstructions {
 
 	}
 
-	@Test
+	@Test //passsing as of 2/9 
 	public void test008() throws ParsingException{
 		Parser parser = new Parser("src/test/resources/test008.txt"); 
 		parser.parse();
@@ -73,7 +73,7 @@ public class TestParserInstructions {
 
 	}
 
-	@Test
+	@Test  //passing as of 2/9
 	public void test009() throws ParsingException{
 		Parser parser = new Parser("src/test/resources/test009.txt"); 
 		parser.parse();
@@ -256,7 +256,14 @@ public class TestParserInstructions {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_else.txt"); 
 		parser.parse(); 
 		parser.printInstructions();
-
 	}
+
+	@Test
+	public void testLoadArray() throws ParsingException {
+        Parser parser = new Parser("src/test/resources/unit_tests/test_array.txt"); 
+        parser.parse(); 
+        parser.printInstructions();
+    }
+
 	
 }

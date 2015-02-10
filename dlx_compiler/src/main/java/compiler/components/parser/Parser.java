@@ -25,14 +25,16 @@ public class Parser {
 	static Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 	public Token currentToken;
 
-	public Map<String, Variable> glblSymbolTable = new HashMap<String, Variable>();
+	public static Map<String, Variable> glblSymbolTable = new HashMap<String, Variable>();
 	public static Map<String, Function> functionSymbolTable = new HashMap<String, Function>();
 
+	public Map<String, Variable> symbols;
+	
 	static {
 		// add the predefined functions to the symbol table
-		functionSymbolTable.put("InputNum", new Function("read", new ArrayList<String>()));
-		functionSymbolTable.put("OutputNum", new Function("write", new ArrayList<String>()));
-		functionSymbolTable.put("OutputNewLine", new Function("wln", new ArrayList<String>()));
+		functionSymbolTable.put("InputNum", new Function("read", new ArrayList<String>(), glblSymbolTable));
+		functionSymbolTable.put("OutputNum", new Function("write", new ArrayList<String>(), glblSymbolTable));
+		functionSymbolTable.put("OutputNewLine", new Function("wln", new ArrayList<String>(), glblSymbolTable));
 	}
 
 	private Scanner scanner;
@@ -114,12 +116,12 @@ public class Parser {
 		String funcName = ident();
 		List<String> formalParams = formalParam();
 
-		Function function = new Function(funcName, formalParams);
+		Function function = new Function(funcName, formalParams, glblSymbolTable);
 		addFunctionToFunctionTable(function);
 		
 		expect(Kind.SEMI_COL);
 
-		funcBody();
+		funcBody(function);
 
 		expect(Kind.SEMI_COL); 
 	}
@@ -131,10 +133,10 @@ public class Parser {
 		List<String> params = new ArrayList<String>();
 		
 		if (accept(Kind.IDENTIFIER)) {
-			ident();
+			params.add(ident());
 			while (accept(Kind.COMMA)) {
 				eatToken(); // eat the comma
-				ident();
+				params.add(ident());
 			}
 		}
 
@@ -143,13 +145,16 @@ public class Parser {
 	}
 
 	/** funcBody = { varDecl } '{' [statSequence] '}' */
-	private void funcBody() throws ParsingException {
+	private void funcBody(Function function) throws ParsingException {
 		//initialize a local symbol table with the globals in it
-		Map<String, Variable> localSymbolsTable = new HashMap<String, Variable>(glblSymbolTable);
+		Map<String, Variable> localSymbolsTable = function.localSymbols; 
 
 		while (accept(Kind.VAR) || accept(Kind.ARRAY)) {
 			varDecl(localSymbolsTable);
 		} 
+
+		//set the symbols for other functions to find
+		symbols = localSymbolsTable;
 
 		expect(Kind.BEGIN);
 
@@ -157,6 +162,7 @@ public class Parser {
 			statSequence();
 		}
 
+		symbols = null; //remove the symbols from the scope
 		expect(Kind.END);
 	}
 
@@ -174,7 +180,7 @@ public class Parser {
 
 			while (accept(Kind.OPN_BRACK)) {
 				eatToken(); // eat the open bracket
-				number();
+				arrayDims.add(number());
 				expect(Kind.CLS_BRACK);
 			}
 		}
@@ -215,41 +221,59 @@ public class Parser {
 	private Result assignment() throws ParsingException {
 		expect(Kind.LET);
 
-		String ident = designator();
-		Result designator = new Result(ResultEnum.VARIABLE);
-		designator.varValue = ident;
+		Result desResult = designator();
+		String ident = desResult.varValue;
+
+		Result designator;
+		if(desResult.arrayExprs.size() > 0) {
+		   Variable var = getCurrentVarName(ident);
+		   designator = Instruction.loadArrayIndex(var, desResult); 
+		}
+		else{
+		    designator = new Result(ResultEnum.VARIABLE);
+		    designator.varValue = ident;  //if variable ...increment ssa index
+		}
 
 		expect(Kind.BECOMES);
 
-		Result exprResult = expression();
+		Result assignmentResult = expression();
+		if(assignmentResult.arrayExprs.size() > 0) { //we are dereferencing an array
+		    Variable var = getCurrentVarName(assignmentResult.varValue);
+		    assignmentResult = Instruction.loadArrayIndex(var, assignmentResult);
+		}
 
-		designator = Instruction.emitAssignmentInstruction(designator, exprResult);
+		designator = Instruction.emitAssignmentInstruction(assignmentResult, designator);
 		return designator;
 	}
 
 	/** funcCall = 'call' ident [ '(' [expression { ',' expression } ] ')' ] */
-	private void funcCall() throws ParsingException {
+	private Result funcCall() throws ParsingException {
 		expect(Kind.CALL);
 
 		String funcIdent = ident();
 		
-		Result funcParams = null;
 
+		List<Result> funcParams = new ArrayList<Result>();
 		if (accept(Kind.OPN_PAREN)) {
 			eatToken(); // eat the open paren
-			funcParams = expression();
+
+			funcParams.add(expression());  //add the first param to the result
 
 			while (accept(Kind.COMMA)) {
 				eatToken(); // eat the comma
-				funcParams = expression();
+				funcParams.add(expression());
 			}
 			expect(Kind.CLS_PAREN);
 		}
 
 		Function function = functionSymbolTable.get(funcIdent);
 
-		Instruction.createFunctionCall(function, funcParams);
-
+		Map<String, Variable> scopeVars = getCurrentScopeSymbols();
+		Instruction.createFunctionCall(function, funcParams, scopeVars);
+		
+		Result funcCallResult = new Result(ResultEnum.INSTR);
+		funcCallResult.instrNum = Instruction.PC - 1;
+		return funcCallResult;
 	}
 
 	/** ifStatement = 'if' relation 'then' statSequence [ 'else' statSequence ] 'fi' */
@@ -286,10 +310,18 @@ public class Parser {
 	/** whileStatement = 'while' relation 'do' statSequence 'od' */
 	private Result whileStatement() throws ParsingException {
 		expect(Kind.WHILE);
+
 		Result relation = relation();
+		int backJumpInstruction = Instruction.PC; //want the value to the relation instruction to come back to
+		Instruction.createConditionalJumpFwd(relation);
+
 		expect(Kind.DO);
 		statSequence();
+
+		Instruction.createBackJump(backJumpInstruction);
 		expect(Kind.OD);
+
+		Instruction.fixUp(relation.fixUp);
 
 		return null;
 	}
@@ -320,14 +352,21 @@ public class Parser {
 	}
 
 	/** designator = ident { '[' expression ']' } */
-	private String designator() throws ParsingException {
-		String x = ident();
+	private Result designator() throws ParsingException {
+		String ident = ident();
+		Variable var = getCurrentVarName(ident);
+		
+		Result result = new Result(ResultEnum.VARIABLE); 
+		result.varValue = var.varIdentifier;
+
 		while (accept(Kind.OPN_BRACK)) {
 			eatToken(); // eat the open bracket
-			expression();
+			Result expr = expression();
+			result.arrayExprs.add(expr);
 			expect(Kind.CLS_BRACK);
 		}
-		return x;
+
+		return result;
 	}
 
 	/** expression = term { ('+' | '-') term } */
@@ -380,15 +419,13 @@ public class Parser {
 	/** factor = designator | number | '(' expression ')' | funcCall */
 	private Result factor() throws ParsingException {
 
-		Result result;
+		Result result = new Result();
   		if (accept(Kind.IDENTIFIER)) {
-			String x = designator();
-			result = new Result(ResultEnum.VARIABLE);
-			result.varValue = x;
+			result = designator();
 			return result;
 		} else if (accept(Kind.NUMBER)) {
 			int x = number();
-			result = new Result(ResultEnum.CONSTANT);
+			result.type = ResultEnum.CONSTANT;
 			result.constValue = x;
 			return result;
 		}
@@ -399,8 +436,8 @@ public class Parser {
 			return result;
 		}
 		else if(accept(Kind.CALL)) {
-			 funcCall();
-			 return null;  //TODO handle function calls
+			 result = funcCall();
+			 return result;
 		} 
 		else { 
 			throw new ParsingException();
@@ -481,5 +518,32 @@ public class Parser {
 
 	public void printInstructions(){
 		Instruction.printInstructions();
+	}
+
+	public Variable getCurrentVarName(String ident) throws ParsingException {
+	    if(symbols != null) {
+	        for(String var : symbols.keySet()) {
+	            if(ident.equals(var)){
+	                return symbols.get(ident);
+	            }
+	        }
+	    }
+
+	    if(glblSymbolTable != null) {
+	        for (String var : glblSymbolTable.keySet()) {
+	            if(ident.equals(var)) {
+	                return glblSymbolTable.get(ident);
+	            }
+	        }
+	    }
+
+	    throw new ParsingException("variable: " + ident + " was not found to be declared.");
+	}
+
+	public Map<String, Variable> getCurrentScopeSymbols() {
+	    if(symbols != null) {
+	        return symbols;
+	    }
+	    return glblSymbolTable;
 	}
 }

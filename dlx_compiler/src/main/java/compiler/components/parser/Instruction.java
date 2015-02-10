@@ -4,6 +4,7 @@ import static compiler.components.intermeditate_rep.Result.EMPTY_RESULT;
 
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -22,13 +23,14 @@ public class Instruction {
 
 	EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
 
+
 	/** Map holding the instruction number to the actual instruction */
 	public static Map<Integer, Instruction> programInstructions = new HashMap<Integer, Instruction>();
 
 	/** The program instruction counter */
 	public static Integer PC = 1;
 
-	/****Instruction Class Definition Begin*******/
+	/****************************************Instruction Class Definition Begin****************************************/
 	OP op;
 	Result leftOperand;
 	Result rightOperand;
@@ -49,15 +51,21 @@ public class Instruction {
 		this.op = op;
 	}
 
-	/****Instruction Class Definition End*******/
+	/***************************************Instruction Class Definition End******************************************/
 
 	public static Result emitAssignmentInstruction(Result r1, Result r2) {
 
-		Instruction assignInst = new Instruction(OP.MOVE, r1, r2);
-		addInstruction(assignInst);
-
 		Result result = new Result(ResultEnum.INSTR);
-		result.instrNum = assignInst.instNum;
+		Instruction assignInst;
+
+	    if(r1.arrayExprs.size() > 0) {
+	       assignInst = new Instruction(OP.STORE, r1, r2);  //store to an array
+	    }
+	    else {
+	       assignInst = new Instruction(OP.MOVE, r1, r2);
+	    }
+	    
+	    addInstruction(assignInst);
 
 		return result;
 	}
@@ -165,14 +173,29 @@ public class Instruction {
 		x.fixUp = PC - 1;
 	}
 
-	public static void createFunctionCall(Function function, Result funcParams) {
-		Instruction saveStatus = new Instruction(OP.SAVE_STATUS, EMPTY_RESULT, EMPTY_RESULT);
-		Instruction funcCallInst = new Instruction(OP.CALL, function, Result.EMPTY_RESULT);
+	public static void createFunctionCall(Function function, List<Result> funcArguments, Map<String, Variable> scopedSymbols) {
 
+	    //Go through each on of the function arguments and if it is an array, load it, 
+	    //otherwise push it on the stack as a variable or constant
+	    Result loadResult;  
+	    for(Result arg: funcArguments) {
+	       if(arg.arrayExprs.size() > 0) {
+	           Variable var = scopedSymbols.get(arg.varValue);
+	           loadArrayIndex(var, arg);
+	       }
+	       Result instResult = new Result(ResultEnum.INSTR);
+	       instResult.instrNum = PC -1;
+           Instruction push = new Instruction(OP.PUSH, instResult, Result.EMPTY_RESULT);
+           addInstruction(push);
+	    }
+	    
+		Instruction saveStatus = new Instruction(OP.SAVE_STATUS, EMPTY_RESULT, EMPTY_RESULT);
+		addInstruction(saveStatus);
+
+		Instruction funcCallInst = new Instruction(OP.CALL, function, Result.EMPTY_RESULT);
+		addInstruction(funcCallInst);
 		// TODO fix this so that it can take in any kind of expression for
 		// funcParams //particularly pushing a poppings on to the stack
-		addInstruction(saveStatus);
-		addInstruction(funcCallInst);
 	}
 
 	public void printDominatorGraph(BasicBlock beginBlock, String fileName) {
@@ -222,16 +245,21 @@ public class Instruction {
 		String left = leftOperand.toString();
 		String right = rightOperand.toString();
 
-		if(op.equals(OP.BRA)){
+		/*  		if(op.equals(OP.BRA)){
 			left = "[" + left + "]";
 		}
 		
-		else if(leftOperand.type.equals(ResultEnum.INSTR)){
+	    if(leftOperand.type.equals(ResultEnum.INSTR)){
 			left = "(" + left + ")";
 		}
+
+		if(rightOperand.type.equals(ResultEnum.INSTR)){
+		    right = "(" + right + ")"; 
+		}
+		
 		else if(rightOperand.type.equals(ResultEnum.CONSTANT)){
 			right = "#" + right;
-		}
+		}*/
 
 
 		String s = String.format("%-1d: %-6s %4s %4s", instNum, op.toString(), left, right); 
@@ -249,9 +277,90 @@ public class Instruction {
 
 	}
 
-	public static void endProgram() {
-		Instruction end = new Instruction(OP.END, EMPTY_RESULT, EMPTY_RESULT);
-		addInstruction(end); 
-	}
 
+
+	/***Following instructions handle arrays ***/
+ 
+    /**
+     * Using row major order : 
+     * BaseAddress + Width * (row)(NoColinArray) + col
+     * @param arrayVar
+     * @param exprResult
+     * @return
+     */
+    public static Result loadArrayIndex(Variable arrayVar, Result exprResult) {
+        List<Integer> arrayDims = arrayVar.getArrayDimSize();
+
+     /*   Result arrayResult = new Result(ResultEnum.VARIABLE);
+        arrayResult.varValue = arrayVar.varIdentifier;*/
+
+        Result constant = new Result(ResultEnum.CONSTANT);
+        constant.constValue = 4;
+
+        Result framePoint = new Result(ResultEnum.VARIABLE);
+        framePoint.varValue = "FP";
+
+        List<Result> arrayIndicies = exprResult.arrayExprs;
+        if(arrayDims.size() == 2) {  //we have a two d array
+            Result numofColumn = new Result(ResultEnum.CONSTANT);
+            numofColumn.constValue = arrayDims.get(1);
+
+            Result columnToGet = arrayIndicies.get(0);
+            Instruction colOffset = new Instruction(OP.MUL, columnToGet, numofColumn);  //add the final offsetbb
+            addInstruction(colOffset);  
+
+            Result colOffsetResult = new Result(ResultEnum.INSTR);
+            colOffsetResult.instrNum = colOffset.instNum;
+            Instruction load = new Instruction(OP.ADD, columnToGet, colOffsetResult);  //add the final offset
+            addInstruction(load);  
+
+        }
+        else if (arrayDims.size() == 3){
+            //do some other stuff here for 3d arrays (didnt see any arrays greater than 4d) 
+        }
+        else {
+            //single dimension array
+            Instruction load = new Instruction(OP.MUL, constant, arrayIndicies.get(0));  //add the final offset
+            addInstruction(load);  
+        }
+
+        Instruction addFP = new Instruction(OP.ADD, framePoint, exprResult);
+        addInstruction(addFP);
+        
+        Instruction adda = loadArray();
+        
+        Result result = new Result(ResultEnum.INSTR);
+        result.instrNum = adda.instNum;
+        return result;
+    } 
+    
+    private static Instruction loadArray() {
+        //create the adda
+        Result inst1 = new Result(ResultEnum.INSTR);
+        inst1.instrNum = PC - 1;
+        Result inst2  = new Result(ResultEnum.INSTR);
+        inst2.instrNum = PC - 2;
+        Instruction adda = new Instruction(OP.ADDA, inst1, inst2); 
+        addInstruction(adda);
+
+        //create the load
+        Result inst3 = new Result(ResultEnum.INSTR);
+        inst3.instrNum = PC - 1;
+        Instruction load = new Instruction(OP.LOAD, inst3, Result.EMPTY_RESULT);
+        addInstruction(load);
+        
+        return load;
+    }
+
+    public static void endProgram() {
+        Instruction end = new Instruction(OP.END, EMPTY_RESULT, EMPTY_RESULT);
+        addInstruction(end); 
+    }
+
+    public static void createBackJump(int backJumpInstruction) {
+        Result backJumpResult = new Result(ResultEnum.INSTR);
+        backJumpResult.instrNum = PC - backJumpInstruction;
+        Instruction backJump = new Instruction(OP.BRA, backJumpResult, Result.EMPTY_RESULT);
+        addInstruction(backJump);
+    }
 }

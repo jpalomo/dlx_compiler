@@ -18,7 +18,7 @@ public class Variable {
     boolean isArray = false;
     int ssaIndex;
     String varIdentifier;
-    List<Integer> arrayDimSize;;
+    List<Integer> arrayDimSize;
 
     public Variable(String varIdentifier, List<Integer> arrayDimSize, VarType type) {
         this.varIdentifier = varIdentifier;
@@ -64,5 +64,16 @@ public class Variable {
 
     public String toString() {
         return varIdentifier;
+    }
+
+    public int getArraySize() {
+        int totalDimSize = 0;
+        if(arrayDimSize.size() > 0) {
+            totalDimSize = 1;
+            for(Integer dim: arrayDimSize) { 
+                totalDimSize *= dim;
+            }
+        }
+        return totalDimSize;
     }
 }
