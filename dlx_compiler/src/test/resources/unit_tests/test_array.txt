@@ -1,8 +1,0 @@
-main
-array[1] a;
-array[1][1] c;
-var b;
-{
-   let b <- a[0];
-   let b <- c[1][1]
-}.

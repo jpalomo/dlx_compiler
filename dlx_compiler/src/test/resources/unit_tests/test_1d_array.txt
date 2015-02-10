@@ -1,0 +1,6 @@
+main
+array[9] a;
+var b;
+{
+   let b <- a[8]
+}.

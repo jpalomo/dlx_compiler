@@ -259,8 +259,15 @@ public class TestParserInstructions {
 	}
 
 	@Test
-	public void testLoadArray() throws ParsingException {
-        Parser parser = new Parser("src/test/resources/unit_tests/test_array.txt"); 
+	public void testLoad1DArray() throws ParsingException {
+        Parser parser = new Parser("src/test/resources/unit_tests/test_1d_array.txt"); 
+        parser.parse(); 
+        parser.printInstructions();
+    }
+	
+	@Test
+	public void testLoad2DArray() throws ParsingException {
+        Parser parser = new Parser("src/test/resources/unit_tests/test_2d_array.txt"); 
         parser.parse(); 
         parser.printInstructions();
     }
