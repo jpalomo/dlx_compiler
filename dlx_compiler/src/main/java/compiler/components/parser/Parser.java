@@ -256,14 +256,18 @@ public class Parser {
 		List<Result> funcParams = new ArrayList<Result>();
 		if (accept(Kind.OPN_PAREN)) {
 			eatToken(); // eat the open paren
-
-			funcParams.add(expression());  //add the first param to the result
-
-			while (accept(Kind.COMMA)) {
-				eatToken(); // eat the comma
-				funcParams.add(expression());
+			if(accept(Kind.CLS_PAREN)){  //no arguments
+			    eatToken();  //the paren
+			}else{ 
+			    
+                funcParams.add(expression());  //add the first param to the result
+                
+                while (accept(Kind.COMMA)) {
+                	eatToken(); // eat the comma
+                	funcParams.add(expression());
+                }
+                expect(Kind.CLS_PAREN);
 			}
-			expect(Kind.CLS_PAREN);
 		}
 
 		Function function = functionSymbolTable.get(funcIdent);

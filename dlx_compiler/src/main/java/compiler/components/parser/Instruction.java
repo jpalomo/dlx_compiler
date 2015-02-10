@@ -268,7 +268,7 @@ public class Instruction {
 
 	public static void createReturn(Result result) {
 		Instruction returnInst = new Instruction(OP.RETURN, result, EMPTY_RESULT);
-		programInstructions.put(returnInst.instNum, returnInst);
+		addInstruction(returnInst);
 	}
 
 	public static void addInstruction(Instruction instruction){
