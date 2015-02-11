@@ -2,6 +2,7 @@ package compiler.components.parser;
 
 import static compiler.components.intermeditate_rep.Result.EMPTY_RESULT;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -23,12 +24,22 @@ public class Instruction {
 
 	EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
 
+	public static List<String> predefined = new ArrayList<String>();
+	static{
+		// add the predefined functions to the symbol table 
+		predefined.add("read");
+		predefined.add("write");
+		predefined.add("writeNL");
+	}
+
 
 	/** Map holding the instruction number to the actual instruction */
 	public static Map<Integer, Instruction> programInstructions = new HashMap<Integer, Instruction>();
 
 	/** The program instruction counter */
 	public static Integer PC = 1;
+
+	public static Parser parser;
 
 	/****************************************Instruction Class Definition Begin****************************************/
 	OP op;
@@ -189,8 +200,10 @@ public class Instruction {
            addInstruction(push);
 	    }
 	    
-		Instruction saveStatus = new Instruction(OP.SAVE_STATUS, EMPTY_RESULT, EMPTY_RESULT);
-		addInstruction(saveStatus);
+	    if(!predefined.contains(function.funcName)) {
+	    	Instruction saveStatus = new Instruction(OP.SAVE_STATUS, EMPTY_RESULT, EMPTY_RESULT);
+	    	addInstruction(saveStatus);
+	    }
 
 		Instruction funcCallInst = new Instruction(OP.CALL, function, Result.EMPTY_RESULT);
 		addInstruction(funcCallInst);
@@ -273,6 +286,7 @@ public class Instruction {
 
 	public static void addInstruction(Instruction instruction){
 		programInstructions.put(instruction.instNum, instruction);
+		parser.blockStack.peek().addInstruction(instruction.instNum);
 		LOGGER.info(instruction.toString());
 
 	}

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,30 +24,41 @@ import compiler.components.parser.Variable.VarType;
  */
 public class Parser {
 	static Logger LOGGER = LoggerFactory.getLogger(Parser.class);
-	public Token currentToken;
-
-	public static Map<String, Variable> glblSymbolTable = new HashMap<String, Variable>();
-	public static Map<String, Function> functionSymbolTable = new HashMap<String, Function>();
-
-	public Map<String, Variable> symbols;
 	
-	static {
-		// add the predefined functions to the symbol table
-		functionSymbolTable.put("InputNum", new Function("read", new ArrayList<String>(), glblSymbolTable));
-		functionSymbolTable.put("OutputNum", new Function("write", new ArrayList<String>(), glblSymbolTable));
-		functionSymbolTable.put("OutputNewLine", new Function("wln", new ArrayList<String>(), glblSymbolTable));
-	}
-
+	public Token currentToken;
+	public Map<String, Variable> glblSymbolTable;
+	public Map<String, Function> functionSymbolTable;
+	public Map<String, Variable> symbols;
 	private Scanner scanner;
+
+	public BasicBlock currentBlock;
+	public Stack<BasicBlock> blockStack = new Stack<BasicBlock>();
+	public Stack<BasicBlock> joinBlockStack = new Stack<BasicBlock>();
+
+	public static List<String> predefined = new ArrayList<String>();
+	static{
+		predefined.add("InputNum");
+		predefined.add("OutputNum");
+		predefined.add("OutputNewLine");
+	} 
 
 	public Parser(String fileName) {
 		scanner = new Scanner(fileName);
+		glblSymbolTable = new HashMap<String, Variable>();
+		functionSymbolTable = new HashMap<String, Function>();
+
+		// add the predefined functions to the symbol table 
+		functionSymbolTable.put("InputNum", new Function("read", new ArrayList<String>(), glblSymbolTable));
+		functionSymbolTable.put("OutputNum", new Function("write", new ArrayList<String>(), glblSymbolTable));
+		functionSymbolTable.put("OutputNewLine", new Function("wln", new ArrayList<String>(), glblSymbolTable));
+
+		currentBlock = new BasicBlock();
+		Instruction.parser = this;
 	}
 
 	public Parser parse() throws ParsingException {
 		eatToken(); // get the first token
-		computation();
-
+		computation(); 
 		return this;
 	}
 
@@ -64,6 +76,8 @@ public class Parser {
 			}
 			else if (accept(Kind.BEGIN)) {
 				eatToken(); // eat the open brace
+				currentBlock = new BasicBlock();
+				blockStack.push(currentBlock);
 				statSequence();
 				expect(Kind.END);
 			} else {
@@ -72,6 +86,8 @@ public class Parser {
 		}
 		expect(Kind.PERIOD);
 		Instruction.endProgram();
+		blockStack.pop();
+		
 		return;
 	}
 
@@ -83,13 +99,13 @@ public class Parser {
 
 		VarType declType;
 		Variable variable;
-		if(arrayDims.size() > 1) {
+		if(arrayDims.size() > 0) {
 			declType = VarType.ARRAY;
 			variable = new Variable(ident, arrayDims, VarType.ARRAY);
 		}
 		else {
 			declType = VarType.VAR;
-			variable = new Variable(ident, arrayDims, VarType.VAR, 0);
+			variable = new Variable(ident, arrayDims, VarType.VAR);
 		}
 
 		addVarToSymbolTable(symbolTable, variable);
@@ -98,7 +114,7 @@ public class Parser {
 			eatToken(); // eat the comma
 			ident = ident();
 			if(declType.equals(VarType.VAR)) {
-				variable = new Variable(ident, arrayDims, declType, 0);
+				variable = new Variable(ident, arrayDims, declType);
 			}
 			else {
 				variable = new Variable(ident, arrayDims, declType);
@@ -116,7 +132,10 @@ public class Parser {
 		String funcName = ident();
 		List<String> formalParams = formalParam();
 
-		Function function = new Function(funcName, formalParams, glblSymbolTable);
+		BasicBlock functionBlock = new BasicBlock();  //create a new block for function code
+		Function function = new Function(funcName, formalParams, glblSymbolTable, functionBlock);
+		blockStack.push(functionBlock); //push the block onto the stack so that code gets generated in this block
+
 		addFunctionToFunctionTable(function);
 		
 		expect(Kind.SEMI_COL);
@@ -124,6 +143,7 @@ public class Parser {
 		funcBody(function);
 
 		expect(Kind.SEMI_COL); 
+		blockStack.pop();  //resotre the stack
 	}
 
 	/** formalParam = '(' [ident { ',' ident }] ')' */
@@ -225,13 +245,16 @@ public class Parser {
 		String ident = desResult.varValue;
 
 		Result designator;
+		Variable currentVar;
 		if(desResult.arrayExprs.size() > 0) {
-		   Variable var = getCurrentVarName(ident);
-		   designator = Instruction.loadArrayIndex(var, desResult); 
+		   currentVar = getCurrentVarName(ident);
+		   designator = Instruction.loadArrayIndex(currentVar, desResult); 
 		}
 		else{
+			currentVar = getCurrentVarName(ident);
+			updateSSAVarSymbol(currentVar);
 		    designator = new Result(ResultEnum.VARIABLE);
-		    designator.varValue = ident;  //if variable ...increment ssa index
+		    designator.varValue = currentVar.getAsSSAVar();  //if variable ...increment ssa index
 		}
 
 		expect(Kind.BECOMES);
@@ -242,6 +265,7 @@ public class Parser {
 		    assignmentResult = Instruction.loadArrayIndex(var, assignmentResult);
 		}
 
+		
 		designator = Instruction.emitAssignmentInstruction(assignmentResult, designator);
 		return designator;
 	}
@@ -277,34 +301,63 @@ public class Parser {
 		
 		Result funcCallResult = new Result(ResultEnum.INSTR);
 		funcCallResult.instrNum = Instruction.PC - 1;
+
+		if(!predefined.contains(funcIdent)){
+			addControlFlow(blockStack.peek(), function.beginBlockForFunction);  //predifined functions dont have code block
+		}
 		return funcCallResult;
 	}
 
 	/** ifStatement = 'if' relation 'then' statSequence [ 'else' statSequence ] 'fi' */
 	private Result ifStatement() throws ParsingException {
 		expect(Kind.IF);
-		
+
+		BasicBlock joinBlock = new BasicBlock();
+		joinBlockStack.push(joinBlock);
+
 		Result follow = new Result();
-		follow.fixUp = 0;
+		follow.fixUp = 0; 
 
 		Result relation = relation();
 		Instruction.createConditionalJumpFwd(relation);  //will set relations fixup to PC -1
 
 		expect(Kind.THEN); 
 
+		BasicBlock ifBodyBlock = new BasicBlock();
+		addControlFlow(blockStack.peek(), ifBodyBlock);  //current block -> ifbodyblock
+
+		blockStack.push(ifBodyBlock);
 		statSequence(); // parse 'then' block
 
 		if (accept(Kind.ELSE)) {
-
 			eatToken(); // eat the else
-			Instruction.createFwdJumpLink(follow);
-			Instruction.fixUp(relation.fixUp);
 
+			//ifBodyBlock = blockStack.pop(); 
+			addControlFlow(blockStack.peek() , joinBlock);
+
+			Instruction.createFwdJumpLink(follow); 
+			Instruction.fixUp(relation.fixUp);
+			blockStack.pop(); //pop the ifbody off the stack, were done with it
+
+			BasicBlock elseBodyBlock = new BasicBlock();
+			addControlFlow(blockStack.peek(), elseBodyBlock); //current block -> elsebodyblock 
+			blockStack.push(elseBodyBlock);
 			statSequence();
+
+			//addControlFlow(elseBodyBlock, joinBlock);
+
 		} else {
 			Instruction.fixUp(relation.fixUp);
+			addControlFlow(blockStack.pop(), joinBlock); 
 		}
+
 		Instruction.fixLink(follow);
+
+		if(joinBlockStack.size() > 0) {
+			addControlFlow(blockStack.pop(), joinBlockStack.peek());
+		}
+		//push the join block for our current block
+		blockStack.push(joinBlockStack.pop());
 		
 		expect(Kind.FI);
 
@@ -425,7 +478,12 @@ public class Parser {
 
 		Result result = new Result();
   		if (accept(Kind.IDENTIFIER)) {
-			result = designator();
+			result = designator();  //get the original desingator variable name
+			Variable currentVar = getCurrentVarName(result.varValue);  //get the current ssa var
+			result.varValue = result.varValue;  
+			if(currentVar.isVar){
+				result.varValue = currentVar.getAsSSAVar();  //we dont use ssa on arrays, only vars
+			}
 			return result;
 		} else if (accept(Kind.NUMBER)) {
 			int x = number();
@@ -500,10 +558,10 @@ public class Parser {
 		from.addControlFlow(to);
 	}
 
-	private void addDomInfo(BasicBlock dominator, BasicBlock dominatee) {
+/*	private void addDomInfo(BasicBlock dominator, BasicBlock dominatee) {
 		dominator.addDominatee(dominatee);
 		dominatee.addDominator(dominator);
-	}
+	}*/
 
 	private void addVarToSymbolTable(Map<String, Variable> symbolTable, Variable varToAdd) throws ParsingException{
 		if(symbolTable.containsKey(varToAdd.getVarIdentifier())){
@@ -511,6 +569,26 @@ public class Parser {
 		}
 		symbolTable.put(varToAdd.getVarIdentifier(), varToAdd); 
 	}
+
+	private void updateSSAVarSymbol(Variable varToAdd) throws ParsingException{
+		String origVarName = varToAdd.varIdentifier;
+		varToAdd.ssaAssignAndInc();
+		if (symbols != null) {
+			for (String var : symbols.keySet()) {
+				if (origVarName.equals(var)) {
+					symbols.put(origVarName, varToAdd);
+				}
+			}
+		}
+
+		if (glblSymbolTable != null) {
+			for (String var : glblSymbolTable.keySet()) {
+				if (origVarName.equals(var)) {
+					glblSymbolTable.put(origVarName, varToAdd);
+				}
+			}
+		} 
+	} 
 
 	private void addFunctionToFunctionTable(Function function) throws ParsingException{
 		if(functionSymbolTable.containsKey(function.funcName)) {
@@ -549,5 +627,9 @@ public class Parser {
 	        return symbols;
 	    }
 	    return glblSymbolTable;
+	}
+
+	public BasicBlock getCurrentBlock() {
+		return blockStack.get(blockStack.size()-1);
 	}
 }

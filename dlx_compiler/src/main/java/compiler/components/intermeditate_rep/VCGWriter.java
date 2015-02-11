@@ -6,6 +6,11 @@ import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import compiler.components.parser.Instruction;
+
 /**
  * Each method is responsible for creating a new line.
  * 
@@ -13,6 +18,8 @@ import java.util.Map;
  *
  */
 public class VCGWriter {
+	static Logger LOGGER = LoggerFactory.getLogger(VCGWriter.class);
+
 	private PrintWriter writer;
 	private HashSet<Integer> printedNodes;
 	private Map<Integer, Instruction> programInstructions;
@@ -43,9 +50,14 @@ public class VCGWriter {
 			writeBBInstructions(bb);
 			emitExitBasicBlock();
 			printedNodes.add(bb.blockNumber);
+			LOGGER.debug("Printing block number:" + bb.toString());
+
+		}
+		else {
+			return;
 		}
 
-		// Create all the dominator links
+/*		// Create all the dominator links
 		if (dominators) {
 			for (BasicBlock dominatee : bb.getDominatees()) {
 				writer.println();
@@ -59,7 +71,7 @@ public class VCGWriter {
 			for (BasicBlock dominatee : bb.getDominatees()) {
 				emitBeginBasicBlock(dominatee, dominators, controlFlows);
 			}
-		}
+		}*/
 
 		// print the information for the control flow
 		if (controlFlows) {

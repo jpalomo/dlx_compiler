@@ -4,19 +4,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import compiler.components.parser.Instruction;
+
 public class BasicBlock {
 	private List<Integer> instructions;
-	private List<BasicBlock> dominatees;
-	private List<BasicBlock> dominators;
 	private List<BasicBlock> controlFlow;
 	public Integer blockNumber;
 	public static int BLOCK_NUM = 0;
 	
 	public BasicBlock() {
 		instructions = new LinkedList<Integer>();
-		dominatees = new LinkedList<BasicBlock>();
-		dominators = new LinkedList<BasicBlock>();
 		controlFlow = new LinkedList<BasicBlock>();
+		this.blockNumber = BLOCK_NUM++;
 	}
 
 	/**
@@ -27,36 +26,12 @@ public class BasicBlock {
 		instructions.add(instructionNumber);
 	}
 
-	/**
-	 * Add a basic block that dominates this block
-	 * @param dominator
-	 */
-	public void addDominator(BasicBlock dominator) {
-		dominators.add(dominator);
-	}
-
-	/**
-	 * Add a basic block that this block dominates
-	 * @param dominatee
-	 */
-	public void addDominatee(BasicBlock dominatee) {
-		dominatees.add(dominatee);
-	}
-
 	public void addControlFlow(BasicBlock to){
 		controlFlow.add(to);
 	}
 
 	public List<Integer> getInstructions() {
 		return instructions;
-	}
-
-	public List<BasicBlock> getDominatees() {
-		return dominatees;
-	}
-
-	public List<BasicBlock> getDominators() {
-		return dominators;
 	}
 
 	public List<BasicBlock> getControlFlow() {
@@ -89,11 +64,17 @@ public class BasicBlock {
 	}
 
 	public String toString(){
-		return blockNumber.toString();
+		StringBuilder sb = new StringBuilder();
+		for(BasicBlock bb:  controlFlow) {
+			sb.append(bb.blockNumber);
+			sb.append(",");
+		}
+
+		return blockNumber.toString() + " has control to: " + sb.toString();
 	}
 
 	public boolean isEmpty() {
-		if(instructions.size() == 0 && dominators.size() == 0) {
+		if(instructions.size() == 0 ) {
 			return true;
 		}
 		return false;

@@ -1,15 +1,22 @@
 package com.palomo.pl241.test;
 
-import static org.junit.Assert.assertEquals;
+import java.util.HashMap;
 
+import org.junit.Before;
 import org.junit.Test;
 
-import compiler.components.lex.Token;
+import compiler.components.parser.Instruction;
 import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
 
 public class TestParserInstructions {
 
+	@Before
+	public void setup() {
+		Instruction.programInstructions = new HashMap<Integer, Instruction>();
+		Instruction.PC = 1;
+	}
+	
 	@Test //passing
 	public void test001() throws ParsingException{
 		Parser parser = new Parser("src/test/resources/test001.txt"); 

@@ -16,7 +16,7 @@ public class Variable {
     
     boolean isVar = false;
     boolean isArray = false;
-    int ssaIndex;
+    Integer ssaIndex;
     String varIdentifier;
     List<Integer> arrayDimSize;
 
@@ -25,13 +25,14 @@ public class Variable {
         this.arrayDimSize = arrayDimSize;
         if(type.equals(VarType.VAR)){
         	isVar = true;
+        	ssaIndex = 0;
         }
         else if(type.equals(VarType.ARRAY)) {
         	isArray = true;
         }
     }
 
-    public Variable(String varIdentifier, List<Integer> arrayDimSize, VarType type, int index) {
+/*    public Variable(String varIdentifier, List<Integer> arrayDimSize, VarType type, int index) {
         this.varIdentifier = varIdentifier;
         this.arrayDimSize = arrayDimSize;
         if(type.equals(VarType.VAR)){
@@ -40,7 +41,7 @@ public class Variable {
         else if(type.equals(VarType.ARRAY)) {
         	isArray = true;
         }
-    }
+    }*/
 
     public String getVarIdentifier() {
         return varIdentifier;
@@ -62,7 +63,17 @@ public class Variable {
         return isArray;
     }
 
+    public String getAsSSAVar(){
+    	if(isArray) {
+    		return varIdentifier;
+    	}
+		return varIdentifier + "_" + ssaIndex;
+    }
+
     public String toString() {
+    	if(isVar) {
+    		return getAsSSAVar();
+    	}
         return varIdentifier;
     }
 
@@ -76,4 +87,8 @@ public class Variable {
         }
         return totalDimSize;
     }
+
+	public void ssaAssignAndInc() {
+		ssaIndex++;
+	}
 }
