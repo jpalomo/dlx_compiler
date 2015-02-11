@@ -32,17 +32,6 @@ public class Variable {
         }
     }
 
-/*    public Variable(String varIdentifier, List<Integer> arrayDimSize, VarType type, int index) {
-        this.varIdentifier = varIdentifier;
-        this.arrayDimSize = arrayDimSize;
-        if(type.equals(VarType.VAR)){
-        	isVar = true;
-        }
-        else if(type.equals(VarType.ARRAY)) {
-        	isArray = true;
-        }
-    }*/
-
     public String getVarIdentifier() {
         return varIdentifier;
     }
@@ -87,8 +76,4 @@ public class Variable {
         }
         return totalDimSize;
     }
-
-	public void ssaAssignAndInc() {
-		ssaIndex++;
-	}
 }
