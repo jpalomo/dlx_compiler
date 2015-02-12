@@ -34,6 +34,7 @@ public class Parser {
 	public BasicBlock currentBlock;
 	public Stack<BasicBlock> blockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> joinBlockStack = new Stack<BasicBlock>();
+	public Stack<BasicBlock> whileFollowStack = new Stack<BasicBlock>();
 
 	public static List<String> predefined = new ArrayList<String>();
 	static{
@@ -227,6 +228,7 @@ public class Parser {
 		} else if (accept(Kind.IF)) {
 			result = ifStatement();
 		} else if (accept(Kind.WHILE)) {
+			//not currently using the result from while
 			result = whileStatement();
 		} else if (accept(Kind.RETURN)) {
 			result = returnStatement();
@@ -369,12 +371,13 @@ public class Parser {
 	private Result whileStatement() throws ParsingException {
 		expect(Kind.WHILE);
 
+		//save the cmp instruction number
+		int cmpInstructionNum = Instruction.PC; //want the value to the relation instruction to come back to
 		/*
 		 * the following instructions should be generated in the current block
 		 * that has instructions in it.
 		 */
 		Result relation = relation();
-		int backJumpInstruction = Instruction.PC; //want the value to the relation instruction to come back to
 		Instruction.createConditionalJumpFwd(relation);
 
 		//TODO do we need to push this current block as the join block for the while
@@ -388,20 +391,35 @@ public class Parser {
 
 		statSequence();
 
-		Instruction.createBackJump(backJumpInstruction);
+		Instruction.createBackJump(cmpInstructionNum);  //branch back to the comparison in the while
+		
 		expect(Kind.OD);
 
-		Instruction.fixUp(relation.fixUp);
+		Instruction.fixUp(relation.fixUp);  //fix up branching when relation is false (jump over the while)
 
-		whileBodyBlock = blockStack.pop();
-		BasicBlock previousBlock = blockStack.pop();
-		addControlFlow(previousBlock, whileBodyBlock);
+		whileBodyBlock = blockStack.pop();  //done generating instructions for the body
+		BasicBlock incomingBlock = blockStack.peek(); //the block containing the relation
+		addControlFlow(incomingBlock, whileBodyBlock); 
+		addControlFlow(whileBodyBlock, incomingBlock);
 
-		BasicBlock followBlock = new BasicBlock();
-		blockStack.push(followBlock);  //instructions after this while will be generated here
-		addControlFlow(previousBlock, followBlock);
+		/*Create the new block for instructions after the while loop */
+		BasicBlock followBlock;
+		if(whileFollowStack.size() > 0) {
+			followBlock = whileFollowStack.pop();
+			blockStack.push(followBlock);
+		}
+		else {
+			followBlock = new BasicBlock();
+			whileFollowStack.push(followBlock);
+		}
 
-		return null;
+		//blockStack.push(followBlock);  //instructions after this while will be generated here
+		addControlFlow(incomingBlock, followBlock);
+
+		//For the sake of not returning null, we create an instruction result
+		Result result = new Result(ResultEnum.INSTR);
+		result.instrNum = Instruction.PC-1;
+		return result;
 	}
 
 	/**

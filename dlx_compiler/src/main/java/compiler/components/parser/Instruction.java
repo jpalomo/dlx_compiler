@@ -183,7 +183,7 @@ public class Instruction {
 		x.fixUp = PC - 1;
 	}
 
-	public static void createFunctionCall(Function function, List<Result> funcArguments, Map<String, Variable> scopedSymbols) {
+	public static void createFunctionCall(Function function, List<Result> funcArguments, Map<String, Variable> scopedSymbols) throws ParsingException {
 
 	    //Go through each on of the function arguments and if it is an array, load it, 
 	    //otherwise push it on the stack as a variable or constant
@@ -192,11 +192,29 @@ public class Instruction {
 	       if(arg.arrayExprs.size() > 0) {
 	           Variable var = scopedSymbols.get(arg.varValue);
 	           loadArrayIndex(var, arg);
+		       Result instResult = new Result(ResultEnum.INSTR);
+		       instResult.instrNum = PC -1;
+	           Instruction push = new Instruction(OP.PUSH, instResult, Result.EMPTY_RESULT);
+	           addInstruction(push);
 	       }
-	       Result instResult = new Result(ResultEnum.INSTR);
-	       instResult.instrNum = PC -1;
-           Instruction push = new Instruction(OP.PUSH, instResult, Result.EMPTY_RESULT);
-           addInstruction(push);
+	       else {
+	    	  /*
+	    	   Result resultToPush;
+	    	   if(arg.type.equals(ResultEnum.CONSTANT)) {
+	    		   resultToPush = arg;
+	    	   }
+	    	   else {
+	    		   Variable var = parser.getCurrentVarName(arg.varValue);
+	    		   resultToPush = new Result(ResultEnum.VARIABLE);
+	    		   resultToPush.varValue = var.getAsSSAVar(); 
+	    	   }*/
+	    	   //TODO this needs to be fixed? -> currently not working because it tries to get the 
+	    	   //SSA name from the map
+
+	           Instruction push = new Instruction(OP.PUSH, arg, Result.EMPTY_RESULT); 
+	           addInstruction(push);
+	       }
+
 	    }
 	    
 	    if(!predefined.contains(function.funcName)) {
@@ -370,7 +388,8 @@ public class Instruction {
 
     public static void createBackJump(int backJumpInstruction) {
         Result backJumpResult = new Result(ResultEnum.INSTR);
-        backJumpResult.instrNum = PC - backJumpInstruction;
+        //backJumpResult.instrNum = PC - backJumpInstruction;
+        backJumpResult.instrNum = backJumpInstruction;
         Instruction backJump = new Instruction(OP.BRA, backJumpResult, Result.EMPTY_RESULT);
         addInstruction(backJump);
     }

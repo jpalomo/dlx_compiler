@@ -114,10 +114,11 @@ public class TestParserInstructionsVCG {
 	}
 
 	@Test  //passing as of 2/9
-	public void test010() throws ParsingException{
+	public void test010() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test010.txt"); 
 		parser.parse();
-		parser.printInstructions();
+		printCFG(parser, "test010.txt.vcg");
+		runXVCG("test010.txt.vcg");;
 
 	}
 
@@ -138,10 +139,11 @@ public class TestParserInstructionsVCG {
 	}
 
 	@Test //passing as of 2/9
-	public void test014() throws ParsingException{
+	public void test014() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test014.txt"); 
 		parser.parse();
-		parser.printInstructions();
+		printCFG(parser, "test014.txt.vcg");
+		runXVCG("test014.txt.vcg");
 
 	}
 
@@ -306,6 +308,15 @@ public class TestParserInstructionsVCG {
 		parser.parse(); 
 		printCFG(parser, "if_else_if_else_else.txt.vcg");
 		runXVCG("if_else_if_else_else.txt.vcg");
+	}
+
+	@Test  //passing as of 2/9
+	public void testNestedWhile() throws ParsingException, IOException{
+		Parser parser = new Parser("src/test/resources/unit_tests/nested_while.txt"); 
+		parser.parse();
+		printCFG(parser, "nested_while.txt.vcg");
+		runXVCG("nested_while.txt.vcg");;
+
 	}
 
 	@Test

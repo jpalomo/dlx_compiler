@@ -1,0 +1,7 @@
+main
+array[1] a;
+array[3][2] c;
+var b;
+{
+   let b <- c[2][1]
+}.

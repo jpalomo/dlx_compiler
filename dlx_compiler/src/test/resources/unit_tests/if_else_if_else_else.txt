@@ -1,0 +1,23 @@
+main
+
+var a, b, c, d, e, f, g, h;
+{
+	if a < b then
+		let a <- a + 1;
+		let e <- e + 1;
+		if b < c then
+			let c <- c * 3
+		fi;
+		let g <- 9 
+	else
+		let b <- b - 1;
+		let f <- f + 1;
+		if b < c then
+			let c <- c * 3
+		else
+			let c <- c * 4;
+			let d <- d + 1
+		fi;
+		let h <- 425
+	fi
+}.
