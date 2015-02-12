@@ -244,19 +244,6 @@ public class Parser {
 		Result desResult = designator();
 		String ident = desResult.varValue;
 
-		Result designator;
-		Variable currentVar;
-		if(desResult.arrayExprs.size() > 0) {
-		   currentVar = getCurrentVarName(ident);
-		   designator = Instruction.loadArrayIndex(currentVar, desResult); 
-		}
-		else{
-			currentVar = getCurrentVarName(ident);
-			updateSSAVarSymbol(currentVar);
-		    designator = new Result(ResultEnum.VARIABLE);
-		    designator.varValue = currentVar.getAsSSAVar();  //if variable ...increment ssa index
-		}
-
 		expect(Kind.BECOMES);
 
 		Result assignmentResult = expression();
@@ -265,6 +252,20 @@ public class Parser {
 		    assignmentResult = Instruction.loadArrayIndex(var, assignmentResult);
 		}
 
+		//do this after because we want to get the correct variable value for the assignment result,
+		//if we do this before, we update the vairable before we assign it
+        Result designator;
+        Variable currentVar;
+        if(desResult.arrayExprs.size() > 0) {
+           currentVar = getCurrentVarName(ident);
+           designator = Instruction.loadArrayIndex(currentVar, desResult); 
+        }
+        else{
+            currentVar = getCurrentVarName(ident);
+            updateSSAVarSymbol(currentVar);
+            designator = new Result(ResultEnum.VARIABLE);
+            designator.varValue = currentVar.getAsSSAVar();  //if variable ...increment ssa index
+        }
 		
 		designator = Instruction.emitAssignmentInstruction(assignmentResult, designator);
 		return designator;
@@ -368,17 +369,37 @@ public class Parser {
 	private Result whileStatement() throws ParsingException {
 		expect(Kind.WHILE);
 
+		/*
+		 * the following instructions should be generated in the current block
+		 * that has instructions in it.
+		 */
 		Result relation = relation();
 		int backJumpInstruction = Instruction.PC; //want the value to the relation instruction to come back to
 		Instruction.createConditionalJumpFwd(relation);
 
+		//TODO do we need to push this current block as the join block for the while
+		//for when we generate the phi instructions?
+		//joinBlockStack.push(blockStack.peek());
+
 		expect(Kind.DO);
+
+		BasicBlock whileBodyBlock = new BasicBlock();  
+		blockStack.push(whileBodyBlock);
+
 		statSequence();
 
 		Instruction.createBackJump(backJumpInstruction);
 		expect(Kind.OD);
 
 		Instruction.fixUp(relation.fixUp);
+
+		whileBodyBlock = blockStack.pop();
+		BasicBlock previousBlock = blockStack.pop();
+		addControlFlow(previousBlock, whileBodyBlock);
+
+		BasicBlock followBlock = new BasicBlock();
+		blockStack.push(followBlock);  //instructions after this while will be generated here
+		addControlFlow(previousBlock, followBlock);
 
 		return null;
 	}
@@ -558,11 +579,6 @@ public class Parser {
 		from.addControlFlow(to);
 	}
 
-/*	private void addDomInfo(BasicBlock dominator, BasicBlock dominatee) {
-		dominator.addDominatee(dominatee);
-		dominatee.addDominator(dominator);
-	}*/
-
 	private void addVarToSymbolTable(Map<String, Variable> symbolTable, Variable varToAdd) throws ParsingException{
 		if(symbolTable.containsKey(varToAdd.getVarIdentifier())){
 			throw new ParsingException("symbol re-declared:" + varToAdd.getVarIdentifier() + " on line number : " + getLineNum());
@@ -572,7 +588,8 @@ public class Parser {
 
 	private void updateSSAVarSymbol(Variable varToAdd) throws ParsingException{
 		String origVarName = varToAdd.varIdentifier;
-		varToAdd.ssaAssignAndInc();
+		//varToAdd.ssaAssignAndInc();
+		varToAdd.ssaIndex = Instruction.PC;
 		if (symbols != null) {
 			for (String var : symbols.keySet()) {
 				if (origVarName.equals(var)) {

@@ -11,7 +11,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import compiler.components.intermeditate_rep.BasicBlock;
 import compiler.components.intermeditate_rep.Result;
 import compiler.components.intermeditate_rep.Result.ResultEnum;
 
@@ -209,18 +208,6 @@ public class Instruction {
 		addInstruction(funcCallInst);
 		// TODO fix this so that it can take in any kind of expression for
 		// funcParams //particularly pushing a poppings on to the stack
-	}
-
-	public void printDominatorGraph(BasicBlock beginBlock, String fileName) {
-/*		VCGWriter vcgwriter = new VCGWriter(fileName + "_dom.vcg", programInstructions);
-		vcgwriter.emitBeginBasicBlock(beginBlock, true, false);
-		vcgwriter.close();*/
-	}
-
-	public void printControlFlow(BasicBlock beginBlock, String fileName) {
-/*		VCGWriter vcgwriter = new VCGWriter(fileName + "_cfg.vcg", programInstructions);
-		vcgwriter.emitBeginBasicBlock(beginBlock, false, true);
-		vcgwriter.close();*/
 	}
 
 	public static void printInstructions() {
