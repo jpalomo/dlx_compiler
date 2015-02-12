@@ -1,4 +1,4 @@
-package compiler.components.intermeditate_rep;
+package compiler.components.intermediate_rep;
 
 import java.util.LinkedList;
 import java.util.List;

@@ -1,4 +1,4 @@
-package compiler.components.intermeditate_rep;
+package compiler.components.intermediate_rep;
 
 import java.io.File;
 import java.io.IOException;

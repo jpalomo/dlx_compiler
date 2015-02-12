@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import compiler.components.intermeditate_rep.BasicBlock;
-import compiler.components.intermeditate_rep.Result;
+import compiler.components.intermediate_rep.BasicBlock;
+import compiler.components.intermediate_rep.Result;
 import compiler.components.parser.Variable.VarType;
 
 public class Function extends Result{

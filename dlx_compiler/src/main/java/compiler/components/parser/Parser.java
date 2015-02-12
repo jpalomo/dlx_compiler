@@ -9,9 +9,9 @@ import java.util.Stack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import compiler.components.intermeditate_rep.BasicBlock;
-import compiler.components.intermeditate_rep.Result;
-import compiler.components.intermeditate_rep.Result.ResultEnum;
+import compiler.components.intermediate_rep.BasicBlock;
+import compiler.components.intermediate_rep.Result;
+import compiler.components.intermediate_rep.Result.ResultEnum;
 import compiler.components.lex.Scanner;
 import compiler.components.lex.Token;
 import compiler.components.lex.Token.Kind;

@@ -1,6 +1,6 @@
 package compiler.components.parser;
 
-import static compiler.components.intermeditate_rep.Result.EMPTY_RESULT;
+import static compiler.components.intermediate_rep.Result.EMPTY_RESULT;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -11,8 +11,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import compiler.components.intermeditate_rep.Result;
-import compiler.components.intermeditate_rep.Result.ResultEnum;
+import compiler.components.intermediate_rep.Result;
+import compiler.components.intermediate_rep.Result.ResultEnum;
 
 public class Instruction {
 	static Logger LOGGER = LoggerFactory.getLogger(Instruction.class);

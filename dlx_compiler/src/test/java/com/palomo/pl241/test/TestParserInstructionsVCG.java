@@ -1,31 +1,51 @@
 package com.palomo.pl241.test;
 
+import java.io.IOException;
 import java.util.HashMap;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import compiler.components.intermeditate_rep.VCGWriter;
+import compiler.components.intermediate_rep.VCGWriter;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
 
 public class TestParserInstructionsVCG {
+	private static String VCG_OUTPUT_DIR = "src/test/resources/vcg/";
+	private static final boolean RUN_XVCG = true;
+	private static final boolean PRINT_INSTRUCTIONS = true;
 
 	@Before
 	public void setup() {
 		Instruction.programInstructions = new HashMap<Integer, Instruction>();
 		Instruction.PC = 1;
 	}
+
+	public void printCFG(Parser parser, String fileName){
+		if(PRINT_INSTRUCTIONS){
+			parser.printInstructions();
+		}
+
+		VCGWriter vcg = new VCGWriter(VCG_OUTPUT_DIR + fileName, Instruction.programInstructions);
+		vcg.emitBeginBasicBlock(parser.currentBlock, true, true);
+		vcg.close();
+	}
+
+	public void runXVCG(String fileName) throws IOException{
+		if(RUN_XVCG){
+			Runtime.getRuntime().exec("/usr/local/bin/xvcg " + VCG_OUTPUT_DIR + fileName); 
+		}
+	}
+	
 	
 	@Test //passing
-	public void test001() throws ParsingException{
+	public void test001() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test001.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		VCGWriter vcg = new VCGWriter("src/test/resources/vcg/test001.txt.vcg", Instruction.programInstructions);
-		vcg.emitBeginBasicBlock(parser.currentBlock, true, true);
-		vcg.close();
+		printCFG(parser, "test001.txt.vcg");
+		runXVCG("test001.txt.vcg"); 
 		
 	}
 
@@ -62,14 +82,11 @@ public class TestParserInstructionsVCG {
 	}
 	
 	@Test  //passing as of 2/9
-	public void test006() throws ParsingException{
+	public void test006() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test006.txt"); 
 		parser.parse();
-		parser.printInstructions();
-		VCGWriter vcg = new VCGWriter("src/test/resources/vcg/test006.txt.vcg", Instruction.programInstructions);
-		vcg.emitBeginBasicBlock(parser.currentBlock, true, true);
-		vcg.close();
-
+		printCFG(parser, "test006.txt.vcg");
+		runXVCG("test006.txt.vcg"); 
 	}
 
 	@Test  //passing as of 2/9
@@ -81,11 +98,11 @@ public class TestParserInstructionsVCG {
 	}
 
 	@Test //passsing as of 2/9 
-	public void test008() throws ParsingException{
+	public void test008() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test008.txt"); 
 		parser.parse();
-		parser.printInstructions();
-
+		printCFG(parser, "test008.txt.vcg");
+		runXVCG("test008.txt.vcg"); 
 	}
 
 	@Test  //passing as of 2/9
@@ -264,36 +281,31 @@ public class TestParserInstructionsVCG {
 	}
 
 
-	/*****Simple Unit Tests Begin********************/
+	/*****Simple Unit Tests Begin
+	 * @throws IOException ********************/
 
 	@Test
-	public void testIfElse() throws ParsingException {
+	public void testIfElse() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_else.txt"); 
 		parser.parse(); 
-		parser.printInstructions();
-		VCGWriter vcg = new VCGWriter("src/test/resources/vcg/if_else.txt.vcg", Instruction.programInstructions);
-		vcg.emitBeginBasicBlock(parser.currentBlock, true, true);
-		vcg.close();
+		printCFG(parser, "if_else.txt.vcg");
+		runXVCG("if_else.txt.vcg");
 	}
 
 	@Test
-	public void testIfIf() throws ParsingException {
+	public void testIfIf() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_if.txt"); 
 		parser.parse(); 
-		parser.printInstructions();
-		VCGWriter vcg = new VCGWriter("src/test/resources/vcg/if_if.txt.vcg", Instruction.programInstructions);
-		vcg.emitBeginBasicBlock(parser.currentBlock, true, true);
-		vcg.close();
+		printCFG(parser, "if_if.txt.vcg");
+		runXVCG("if_if.txt.vcg");
 	}
 
 	@Test
-	public void testIfElseIfElseIfElse() throws ParsingException {
+	public void testIfElseIfElseIfElse() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_else_if_else_else.txt"); 
 		parser.parse(); 
-		parser.printInstructions();
-		VCGWriter vcg = new VCGWriter("src/test/resources/vcg/if_else_if_else_else.txt.vcg", Instruction.programInstructions);
-		vcg.emitBeginBasicBlock(parser.currentBlock, true, true);
-		vcg.close();
+		printCFG(parser, "if_else_if_else_else.txt.vcg");
+		runXVCG("if_else_if_else_else.txt.vcg");
 	}
 
 	@Test
