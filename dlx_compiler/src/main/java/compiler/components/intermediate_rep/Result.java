@@ -29,6 +29,10 @@ public class Result {
 	   this(ResultEnum.EMPTY); 
 	}
 
+	public String getVarNameWithoutIndex() {
+		return varValue.split("_")[0];
+	}
+
 	public String toString(){
 		if(type.equals(ResultEnum.CONSTANT)) {
 			return "#" + constValue.toString();

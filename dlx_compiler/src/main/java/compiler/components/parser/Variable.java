@@ -20,6 +20,8 @@ public class Variable {
     String varIdentifier;
     List<Integer> arrayDimSize;
 
+    public int previousSSAIndex;
+
     public Variable(String varIdentifier, List<Integer> arrayDimSize, VarType type) {
         this.varIdentifier = varIdentifier;
         this.arrayDimSize = arrayDimSize;
@@ -57,6 +59,13 @@ public class Variable {
     		return varIdentifier;
     	}
 		return varIdentifier + "_" + ssaIndex;
+    }
+
+    public String getPreviousSSAVar(){
+    	if(isArray) {
+    		return varIdentifier;
+    	}
+		return varIdentifier + "_" + previousSSAIndex;
     }
 
     public String toString() {

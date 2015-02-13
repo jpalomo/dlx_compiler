@@ -11,6 +11,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import compiler.components.intermediate_rep.BasicBlock;
 import compiler.components.intermediate_rep.Result;
 import compiler.components.intermediate_rep.Result.ResultEnum;
 
@@ -45,6 +46,7 @@ public class Instruction {
 	Result leftOperand;
 	Result rightOperand;
 	Integer instNum;
+	Integer blockNumber;
 
 	public Instruction(OP operation, Result leftOperand, Result rightOperand) {
 		this.op = operation;
@@ -59,11 +61,13 @@ public class Instruction {
 
 	public Instruction(OP op){
 		this.op = op;
+		this.instNum = PC++;
 	}
 
-	/***************************************Instruction Class Definition End******************************************/
+	/***************************************Instruction Class Definition End
+	 * @throws ParsingException ******************************************/
 
-	public static Result emitAssignmentInstruction(Result r1, Result r2) {
+	public static Result emitAssignmentInstruction(Result r1, Result r2) throws ParsingException {
 
 		Result result = new Result(ResultEnum.INSTR);
 		Instruction assignInst;
@@ -72,12 +76,66 @@ public class Instruction {
 	       assignInst = new Instruction(OP.STORE, r1, r2);  //store to an array
 	    }
 	    else {
-	       assignInst = new Instruction(OP.MOVE, r1, r2);
+	    	if(r1.type.equals(ResultEnum.VARIABLE) && ((r2.type.equals(ResultEnum.CONSTANT) || r2.type.equals(ResultEnum.INSTR)))) {
+	    		//we want the assignment with a vairable and constant to be of the form
+	    		//MOVE const/instr Variable
+	    		assignInst = new Instruction(OP.MOVE, r2, r1);
+	    		generatePhi(r1);
+	    	}
+	    	else {
+	    		assignInst = new Instruction(OP.MOVE, r1, r2);
+	    		generatePhi(r2);
+	    	}
 	    }
 	    
 	    addInstruction(assignInst);
 
 		return result;
+	}
+
+	private static void generatePhi(Result varToInsert) throws ParsingException {
+		if(parser.joinBlockStack.size() < 1){
+			return;  //not in a if or while
+		}
+		
+		String currentVarWithoutIndex = varToInsert.getVarNameWithoutIndex(); 
+		BasicBlock currentJoinBlock = parser.joinBlockStack.peek();  //get the current join block to generate phi instruction in
+		List<Integer> allInstructions = currentJoinBlock.getInstructions();
+
+		Instruction instruction;
+		for(int instNum: allInstructions) {
+			instruction = programInstructions.get(instNum);
+			if(instruction.op.equals(OP.PHI)){
+				if(instruction.leftOperand.getVarNameWithoutIndex().equals(currentVarWithoutIndex)){
+					if(parser.comingFromLeft) {
+						instruction.leftOperand = varToInsert;
+						return;
+					}
+					instruction.rightOperand = varToInsert;
+					return;
+				}
+			} 
+		}
+
+		Instruction phiInstruction = new Instruction(OP.PHI);
+		
+		if(parser.comingFromLeft) {
+			Variable var = parser.getCurrentVarName(varToInsert.getVarNameWithoutIndex());
+			phiInstruction.leftOperand = varToInsert;
+			
+			Result prev = new Result(ResultEnum.VARIABLE);
+			prev.varValue = var.getPreviousSSAVar();
+			phiInstruction.rightOperand = prev;
+		}
+		else {
+			Variable var = parser.getCurrentVarName(varToInsert.getVarNameWithoutIndex());
+			phiInstruction.rightOperand = varToInsert;
+			
+			Result prev = new Result(ResultEnum.VARIABLE);
+			prev.varValue = var.getPreviousSSAVar();
+			phiInstruction.leftOperand = prev;
+		}
+		addPhiInstruction(phiInstruction);
 	}
 
 	public static void fixUp(Integer instructionNum) {
@@ -130,7 +188,7 @@ public class Instruction {
 				operator = op.equals("+") ? OP.ADD : OP.SUB;
 			}
 
-			Instruction instruction = new Instruction(operator, r1, r2);
+			Instruction instruction = new Instruction(operator, r2, r1);
 			result.instrNum = instruction.instNum;
 
 			addInstruction(instruction);
@@ -146,11 +204,6 @@ public class Instruction {
 		Instruction instruction = new Instruction(OP.CMP, r1, r2);
 		addInstruction(instruction);
 
-		// create the branch instruction that will need to be fixed up
-/*		OP op = invertRelop(relationalOp);
-		Instruction branchInst = new Instruction(op, EMPTY_RESULT, EMPTY_RESULT);
-		addInstruction(branchInst);*/
-		
 		result.instrNum = instruction.instNum;
 
 
@@ -198,16 +251,6 @@ public class Instruction {
 	           addInstruction(push);
 	       }
 	       else {
-	    	  /*
-	    	   Result resultToPush;
-	    	   if(arg.type.equals(ResultEnum.CONSTANT)) {
-	    		   resultToPush = arg;
-	    	   }
-	    	   else {
-	    		   Variable var = parser.getCurrentVarName(arg.varValue);
-	    		   resultToPush = new Result(ResultEnum.VARIABLE);
-	    		   resultToPush.varValue = var.getAsSSAVar(); 
-	    	   }*/
 	    	   //TODO this needs to be fixed? -> currently not working because it tries to get the 
 	    	   //SSA name from the map
 
@@ -263,23 +306,6 @@ public class Instruction {
 		String left = leftOperand.toString();
 		String right = rightOperand.toString();
 
-		/*  		if(op.equals(OP.BRA)){
-			left = "[" + left + "]";
-		}
-		
-	    if(leftOperand.type.equals(ResultEnum.INSTR)){
-			left = "(" + left + ")";
-		}
-
-		if(rightOperand.type.equals(ResultEnum.INSTR)){
-		    right = "(" + right + ")"; 
-		}
-		
-		else if(rightOperand.type.equals(ResultEnum.CONSTANT)){
-			right = "#" + right;
-		}*/
-
-
 		String s = String.format("%-1d: %-6s %4s %4s", instNum, op.toString(), left, right); 
 		return s;
 	}
@@ -291,11 +317,19 @@ public class Instruction {
 
 	public static void addInstruction(Instruction instruction){
 		programInstructions.put(instruction.instNum, instruction);
-		parser.blockStack.peek().addInstruction(instruction.instNum);
+		BasicBlock basicBlock = parser.blockStack.peek();
+		basicBlock.addInstruction(instruction.instNum);
+		instruction.blockNumber = basicBlock.blockNumber;
 		LOGGER.info(instruction.toString());
-
 	}
 
+	public static void addPhiInstruction(Instruction instruction){
+		programInstructions.put(instruction.instNum, instruction);
+		BasicBlock joinBlock = parser.joinBlockStack.peek();
+		joinBlock.addInstruction(instruction.instNum);
+		instruction.blockNumber = joinBlock.blockNumber;
+		LOGGER.info(instruction.toString());
+	}
 
 
 	/***Following instructions handle arrays ***/
@@ -388,7 +422,6 @@ public class Instruction {
 
     public static void createBackJump(int backJumpInstruction) {
         Result backJumpResult = new Result(ResultEnum.INSTR);
-        //backJumpResult.instrNum = PC - backJumpInstruction;
         backJumpResult.instrNum = backJumpInstruction;
         Instruction backJump = new Instruction(OP.BRA, backJumpResult, Result.EMPTY_RESULT);
         addInstruction(backJump);

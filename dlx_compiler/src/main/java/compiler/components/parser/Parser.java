@@ -36,6 +36,10 @@ public class Parser {
 	public Stack<BasicBlock> joinBlockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> whileFollowStack = new Stack<BasicBlock>();
 
+	Map<Integer, BasicBlock> blockMap = new HashMap<Integer, BasicBlock>();
+
+	public boolean comingFromLeft = true;
+
 	public static List<String> predefined = new ArrayList<String>();
 	static{
 		predefined.add("InputNum");
@@ -53,7 +57,7 @@ public class Parser {
 		functionSymbolTable.put("OutputNum", new Function("write", new ArrayList<String>(), glblSymbolTable));
 		functionSymbolTable.put("OutputNewLine", new Function("wln", new ArrayList<String>(), glblSymbolTable));
 
-		currentBlock = new BasicBlock();
+		currentBlock = createBasicBlock();
 		Instruction.parser = this;
 	}
 
@@ -77,7 +81,7 @@ public class Parser {
 			}
 			else if (accept(Kind.BEGIN)) {
 				eatToken(); // eat the open brace
-				currentBlock = new BasicBlock();
+				currentBlock = createBasicBlock();
 				blockStack.push(currentBlock);
 				statSequence();
 				expect(Kind.END);
@@ -133,7 +137,7 @@ public class Parser {
 		String funcName = ident();
 		List<String> formalParams = formalParam();
 
-		BasicBlock functionBlock = new BasicBlock();  //create a new block for function code
+		BasicBlock functionBlock = createBasicBlock();  //create a new block for function code
 		Function function = new Function(funcName, formalParams, glblSymbolTable, functionBlock);
 		blockStack.push(functionBlock); //push the block onto the stack so that code gets generated in this block
 
@@ -315,7 +319,7 @@ public class Parser {
 	private Result ifStatement() throws ParsingException {
 		expect(Kind.IF);
 
-		BasicBlock joinBlock = new BasicBlock();
+		BasicBlock joinBlock = createBasicBlock();
 		joinBlockStack.push(joinBlock);
 
 		Result follow = new Result();
@@ -326,29 +330,28 @@ public class Parser {
 
 		expect(Kind.THEN); 
 
-		BasicBlock ifBodyBlock = new BasicBlock();
+		BasicBlock ifBodyBlock = createBasicBlock();
 		addControlFlow(blockStack.peek(), ifBodyBlock);  //current block -> ifbodyblock
 
 		blockStack.push(ifBodyBlock);
 		statSequence(); // parse 'then' block
 
 		if (accept(Kind.ELSE)) {
+			comingFromLeft = false;
 			eatToken(); // eat the else
 
-			//ifBodyBlock = blockStack.pop(); 
 			addControlFlow(blockStack.peek() , joinBlock);
 
 			Instruction.createFwdJumpLink(follow); 
 			Instruction.fixUp(relation.fixUp);
 			blockStack.pop(); //pop the ifbody off the stack, were done with it
 
-			BasicBlock elseBodyBlock = new BasicBlock();
+			BasicBlock elseBodyBlock = createBasicBlock();
 			addControlFlow(blockStack.peek(), elseBodyBlock); //current block -> elsebodyblock 
 			blockStack.push(elseBodyBlock);
 			statSequence();
 
-			//addControlFlow(elseBodyBlock, joinBlock);
-
+			comingFromLeft = true; 
 		} else {
 			Instruction.fixUp(relation.fixUp);
 			addControlFlow(blockStack.pop(), joinBlock); 
@@ -377,48 +380,50 @@ public class Parser {
 		 * the following instructions should be generated in the current block
 		 * that has instructions in it.
 		 */
+		BasicBlock incomingBlock = createBasicBlock();
+		addControlFlow(blockStack.pop(), incomingBlock);  //remove the previous block and add control flow from it to the new block
+		joinBlockStack.push(incomingBlock);
+		blockStack.push(incomingBlock);
+		
 		Result relation = relation();
 		Instruction.createConditionalJumpFwd(relation);
-
-		//TODO do we need to push this current block as the join block for the while
-		//for when we generate the phi instructions?
-		//joinBlockStack.push(blockStack.peek());
-
+		
 		expect(Kind.DO);
 
-		BasicBlock whileBodyBlock = new BasicBlock();  
+		comingFromLeft = true;
+		BasicBlock whileBodyBlock = createBasicBlock();  
 		blockStack.push(whileBodyBlock);
-
 		statSequence();
-
+		joinBlockStack.push(whileBodyBlock);
+		
 		Instruction.createBackJump(cmpInstructionNum);  //branch back to the comparison in the while
 		
 		expect(Kind.OD);
 
 		Instruction.fixUp(relation.fixUp);  //fix up branching when relation is false (jump over the while)
-
-		whileBodyBlock = blockStack.pop();  //done generating instructions for the body
-		BasicBlock incomingBlock = blockStack.peek(); //the block containing the relation
-		addControlFlow(incomingBlock, whileBodyBlock); 
-		addControlFlow(whileBodyBlock, incomingBlock);
-
-		/*Create the new block for instructions after the while loop */
-		BasicBlock followBlock;
-		if(whileFollowStack.size() > 0) {
-			followBlock = whileFollowStack.pop();
-			blockStack.push(followBlock);
+		
+		whileBodyBlock = joinBlockStack.pop();  //done generating instructions for the body
+		if(joinBlockStack.size() - 1 > 0) {
+			addControlFlow(incomingBlock, whileBodyBlock); 
+			addControlFlow(blockStack.peek(), joinBlockStack.peek());
 		}
 		else {
-			followBlock = new BasicBlock();
-			whileFollowStack.push(followBlock);
+			addControlFlow(incomingBlock, whileBodyBlock); 
+			addControlFlow(whileBodyBlock, incomingBlock);
+			
 		}
 
-		//blockStack.push(followBlock);  //instructions after this while will be generated here
+		/*Create the new block for instructions after the while loop */
+		BasicBlock followBlock = createBasicBlock();
 		addControlFlow(incomingBlock, followBlock);
+		blockStack.push(followBlock);
+
+		joinBlockStack.pop();
 
 		//For the sake of not returning null, we create an instruction result
 		Result result = new Result(ResultEnum.INSTR);
 		result.instrNum = Instruction.PC-1;
+		comingFromLeft = false;
 		return result;
 	}
 
@@ -606,7 +611,7 @@ public class Parser {
 
 	private void updateSSAVarSymbol(Variable varToAdd) throws ParsingException{
 		String origVarName = varToAdd.varIdentifier;
-		//varToAdd.ssaAssignAndInc();
+		varToAdd.previousSSAIndex = varToAdd.ssaIndex;
 		varToAdd.ssaIndex = Instruction.PC;
 		if (symbols != null) {
 			for (String var : symbols.keySet()) {
@@ -655,6 +660,12 @@ public class Parser {
 	    }
 
 	    throw new ParsingException("variable: " + ident + " was not found to be declared.");
+	}
+
+	public BasicBlock createBasicBlock() {
+		BasicBlock bb = new BasicBlock(); 
+		blockMap.put(bb.blockNumber, bb);
+		return bb;
 	}
 
 	public Map<String, Variable> getCurrentScopeSymbols() {
