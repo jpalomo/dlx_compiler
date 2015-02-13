@@ -38,8 +38,7 @@ public class VCGWriter {
 		writer.print("smanhattan_edges: yes");
 	}
 
-	public void emitBeginBasicBlock(BasicBlock bb, boolean dominators,
-			boolean controlFlows) {
+	public void emitControlFlowGraph(BasicBlock bb) {
 		
 		//in control flow graphs multiple blocks may converge to a single block, when this happens, we dont want to duplicate the node
 		if (!printedNodes.contains(bb.blockNumber)) {
@@ -57,41 +56,57 @@ public class VCGWriter {
 			return;
 		}
 
-/*		// Create all the dominator links
-		if (dominators) {
-			for (BasicBlock dominatee : bb.getDominatees()) {
-				writer.println();
-				writer.println("edge: { sourcename: " + "\"" + bb.blockNumber
-						+ "\"");
-				writer.println("targetname: " + "\"" + dominatee.blockNumber
-						+ "\"");
-				writer.println("color: blue");
-				writer.println("}");
-			}
-			for (BasicBlock dominatee : bb.getDominatees()) {
-				emitBeginBasicBlock(dominatee, dominators, controlFlows);
-			}
-		}*/
-
 		// print the information for the control flow
-		if (controlFlows) {
-			for (BasicBlock controlFlow : bb.getControlFlow()) {
-				writer.println();
-				writer.println("edge: { sourcename: " + "\"" + bb.blockNumber
-						+ "\"");
-				writer.println("targetname: " + "\"" + controlFlow.blockNumber
-						+ "\"");
-				writer.println("color: red");
-				writer.println("}");
-			}
-			for (BasicBlock controlFlow : bb.getControlFlow()) {
-				emitBeginBasicBlock(controlFlow, dominators, controlFlows);
-			}
+		for (BasicBlock controlFlow : bb.controlFlow) {
+			writer.println();
+			writer.println("edge: { sourcename: " + "\"" + bb.blockNumber
+					+ "\"");
+			writer.println("targetname: " + "\"" + controlFlow.blockNumber
+					+ "\"");
+			writer.println("color: red");
+			writer.println("}");
+		}
+		for (BasicBlock controlFlow : bb.controlFlow) {
+			emitControlFlowGraph(controlFlow);
 		}
 	}
 
+	public void emitDominatorGraph(BasicBlock bb) {
+		
+		//in control flow graphs multiple blocks may converge to a single block, when this happens, we dont want to duplicate the node
+		if (!printedNodes.contains(bb.blockNumber)) {
+			writer.println();
+			writer.println("node: {");
+			writer.println("title: \"" + bb.blockNumber + "\"");
+			writer.print("label: \"" + bb.blockNumber + "[");
+			writeBBInstructions(bb);
+			emitExitBasicBlock();
+			printedNodes.add(bb.blockNumber);
+			LOGGER.debug("Printing block number:" + bb.toString());
+
+		}
+		else {
+			return;
+		}
+
+		for (BasicBlock controlFlow : bb.dominatees) {
+			writer.println();
+			writer.println("edge: { sourcename: " + "\"" + bb.blockNumber
+					+ "\"");
+			writer.println("targetname: " + "\"" + controlFlow.blockNumber
+					+ "\"");
+			writer.println("color: red");
+			writer.println("}");
+		}
+
+		// print the information for the control flow
+        for (BasicBlock dominatee : bb.dominatees) {
+        	emitDominatorGraph(dominatee);
+		}
+	}
+	
 	private void writeBBInstructions(BasicBlock bb) {
-		for (Integer instNum : bb.getInstructions()) {
+		for (Integer instNum : bb.instructions) {
 			writer.println();
 			writer.print(programInstructions.get(instNum).toString());
 		}

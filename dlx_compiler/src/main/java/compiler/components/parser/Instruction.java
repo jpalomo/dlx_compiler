@@ -100,7 +100,7 @@ public class Instruction {
 		
 		String currentVarWithoutIndex = varToInsert.getVarNameWithoutIndex(); 
 		BasicBlock currentJoinBlock = parser.joinBlockStack.peek();  //get the current join block to generate phi instruction in
-		List<Integer> allInstructions = currentJoinBlock.getInstructions();
+		List<Integer> allInstructions = currentJoinBlock.instructions;
 
 		Instruction instruction;
 		for(int instNum: allInstructions) {

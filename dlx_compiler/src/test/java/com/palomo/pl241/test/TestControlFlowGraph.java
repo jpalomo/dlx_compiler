@@ -11,7 +11,7 @@ import compiler.components.parser.Instruction;
 import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
 
-public class TestParserInstructionsVCG {
+public class TestControlFlowGraph {
 	private static String VCG_OUTPUT_DIR = "src/test/resources/vcg/";
 	private static final boolean RUN_XVCG = true;
 	private static final boolean PRINT_INSTRUCTIONS = true;
@@ -28,7 +28,7 @@ public class TestParserInstructionsVCG {
 		}
 
 		VCGWriter vcg = new VCGWriter(VCG_OUTPUT_DIR + fileName, Instruction.programInstructions);
-		vcg.emitBeginBasicBlock(parser.currentBlock, true, true);
+		vcg.emitControlFlowGraph(parser.currentBlock);
 		vcg.close();
 	}
 
@@ -37,7 +37,6 @@ public class TestParserInstructionsVCG {
 			Runtime.getRuntime().exec("/usr/local/bin/xvcg " + VCG_OUTPUT_DIR + fileName); 
 		}
 	}
-	
 	
 	@Test //passing with cfg
 	public void test001() throws ParsingException, IOException{
@@ -152,23 +151,22 @@ public class TestParserInstructionsVCG {
 		parser.parse();
 		printCFG(parser, "test014.txt.vcg");
 		runXVCG("test014.txt.vcg");
-
 	}
 
 	@Test 
-	public void test015() throws ParsingException{
+	public void test015() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test015.txt"); 
 		parser.parse();
-		parser.printInstructions();
-
+		printCFG(parser, "test015.txt.vcg");
+		runXVCG("test015.txt.vcg");
 	}
 
 	@Test
-	public void test016() throws ParsingException{
+	public void test016() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test016.txt"); 
 		parser.parse();
-		parser.printInstructions();
-
+		printCFG(parser, "test016.txt.vcg");
+		runXVCG("test016.txt.vcg");
 	}
 
 	@Test  
@@ -196,19 +194,19 @@ public class TestParserInstructionsVCG {
 	}
 
 	@Test
-	public void test020() throws ParsingException{
+	public void test020() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test020.txt"); 
 		parser.parse();
-		parser.printInstructions();
-
+		printCFG(parser, "test020.txt.vcg");
+		runXVCG("test020.txt.vcg");
 	}
 
 	@Test  
-	public void test021() throws ParsingException{
+	public void test021() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test021.txt"); 
 		parser.parse();
-		parser.printInstructions();
-
+		printCFG(parser, "test021.txt.vcg");
+		runXVCG("test021.txt.vcg"); 
 	}
 
 	@Test  
@@ -216,8 +214,7 @@ public class TestParserInstructionsVCG {
 		Parser parser = new Parser("src/test/resources/test022.txt"); 
 		parser.parse();
 		printCFG(parser, "test022.txt.vcg");
-		runXVCG("test022.txt.vcg");
-
+		runXVCG("test022.txt.vcg"); 
 	}
 
 	@Test  
@@ -225,16 +222,15 @@ public class TestParserInstructionsVCG {
 		Parser parser = new Parser("src/test/resources/test023.txt"); 
 		parser.parse();
 		printCFG(parser, "test023.txt.vcg");
-		runXVCG("test023.txt.vcg");
-
+		runXVCG("test023.txt.vcg"); 
 	}
 	
 	@Test   
-	public void test024() throws ParsingException{
+	public void test024() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test024.txt"); 
 		parser.parse();
-		parser.printInstructions();
-
+		printCFG(parser, "test024.txt.vcg");
+		runXVCG("test024.txt.vcg");
 	}
 	
 	@Test  
@@ -242,8 +238,7 @@ public class TestParserInstructionsVCG {
 		Parser parser = new Parser("src/test/resources/test025.txt"); 
 		parser.parse();
 		printCFG(parser, "test025.txt.vcg");
-		runXVCG("test025.txt.vcg");
-
+		runXVCG("test025.txt.vcg"); 
 	}
 	
 	@Test   
@@ -263,11 +258,11 @@ public class TestParserInstructionsVCG {
 	}
 	
 	@Test   
-	public void test028() throws ParsingException{
+	public void test028() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test028.txt"); 
 		parser.parse();
-		parser.printInstructions();
-
+		printCFG(parser, "test028.txt.vcg");
+		runXVCG("test028.txt.vcg");
 	}
 	
 	@Test  
@@ -276,7 +271,6 @@ public class TestParserInstructionsVCG {
 		parser.parse();
 		printCFG(parser, "test029.txt.vcg");
 		runXVCG("test029.txt.vcg");
-
 	}
 	
 	@Test  
@@ -331,19 +325,4 @@ public class TestParserInstructionsVCG {
 		runXVCG("nested_while.txt.vcg");;
 
 	}
-
-	@Test
-	public void testLoad1DArray() throws ParsingException {
-        Parser parser = new Parser("src/test/resources/unit_tests/test_1d_array.txt"); 
-        parser.parse(); 
-        parser.printInstructions();
-    }
-	
-	@Test
-	public void testLoad2DArray() throws ParsingException {
-        Parser parser = new Parser("src/test/resources/unit_tests/test_2d_array.txt"); 
-        parser.parse(); 
-        parser.printInstructions();
-    }
-
 }

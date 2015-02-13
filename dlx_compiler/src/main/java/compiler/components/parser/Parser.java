@@ -17,6 +17,7 @@ import compiler.components.lex.Token;
 import compiler.components.lex.Token.Kind;
 import compiler.components.parser.Variable.VarType;
 
+//TODO different colored arrows for functions
 /**
  * Implementation of a top-down recursive descent parser.
  *
@@ -35,6 +36,12 @@ public class Parser {
 	public Stack<BasicBlock> blockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> joinBlockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> whileFollowStack = new Stack<BasicBlock>();
+
+	public Stack<Integer> stackDepth = new Stack<Integer>();
+
+	public boolean inLoop = false;
+	public BasicBlock loopHeader = null;
+
 
 	Map<Integer, BasicBlock> blockMap = new HashMap<Integer, BasicBlock>();
 
@@ -232,7 +239,6 @@ public class Parser {
 		} else if (accept(Kind.IF)) {
 			result = ifStatement();
 		} else if (accept(Kind.WHILE)) {
-			//not currently using the result from while
 			result = whileStatement();
 		} else if (accept(Kind.RETURN)) {
 			result = returnStatement();
@@ -322,6 +328,9 @@ public class Parser {
 		BasicBlock joinBlock = createBasicBlock();
 		joinBlockStack.push(joinBlock);
 
+		BasicBlock mainDominator = blockStack.peek();
+		addDominatee(mainDominator, joinBlock);
+
 		Result follow = new Result();
 		follow.fixUp = 0; 
 
@@ -336,6 +345,7 @@ public class Parser {
 		blockStack.push(ifBodyBlock);
 		statSequence(); // parse 'then' block
 
+        addDominatee(mainDominator, blockStack.peek());
 		if (accept(Kind.ELSE)) {
 			comingFromLeft = false;
 			eatToken(); // eat the else
@@ -348,6 +358,8 @@ public class Parser {
 
 			BasicBlock elseBodyBlock = createBasicBlock();
 			addControlFlow(blockStack.peek(), elseBodyBlock); //current block -> elsebodyblock 
+			addDominatee(mainDominator, elseBodyBlock);
+
 			blockStack.push(elseBodyBlock);
 			statSequence();
 
@@ -376,11 +388,19 @@ public class Parser {
 
 		//save the cmp instruction number
 		int cmpInstructionNum = Instruction.PC; //want the value to the relation instruction to come back to
+		
 		/*
 		 * the following instructions should be generated in the current block
 		 * that has instructions in it.
 		 */
 		BasicBlock incomingBlock = createBasicBlock();
+
+		stackDepth.push(1);
+		if(stackDepth.size() < 1) {
+			inLoop = true;
+			loopHeader = incomingBlock;
+		}
+		
 		addControlFlow(blockStack.pop(), incomingBlock);  //remove the previous block and add control flow from it to the new block
 		joinBlockStack.push(incomingBlock);
 		blockStack.push(incomingBlock);
@@ -390,7 +410,7 @@ public class Parser {
 		
 		expect(Kind.DO);
 
-		comingFromLeft = true;
+		comingFromLeft = false;
 		BasicBlock whileBodyBlock = createBasicBlock();  
 		blockStack.push(whileBodyBlock);
 		statSequence();
@@ -403,6 +423,7 @@ public class Parser {
 		Instruction.fixUp(relation.fixUp);  //fix up branching when relation is false (jump over the while)
 		
 		whileBodyBlock = joinBlockStack.pop();  //done generating instructions for the body
+		addDominatee(loopHeader, whileBodyBlock);
 		if(joinBlockStack.size() - 1 > 0) {
 			addControlFlow(incomingBlock, whileBodyBlock); 
 			addControlFlow(blockStack.peek(), joinBlockStack.peek());
@@ -420,10 +441,16 @@ public class Parser {
 
 		joinBlockStack.pop();
 
+		if(stackDepth.size() == 1) {
+			addDominatee(loopHeader, followBlock);
+		}
+		stackDepth.pop();
+
+
 		//For the sake of not returning null, we create an instruction result
 		Result result = new Result(ResultEnum.INSTR);
 		result.instrNum = Instruction.PC-1;
-		comingFromLeft = false;
+		comingFromLeft = true;
 		return result;
 	}
 
@@ -600,6 +627,10 @@ public class Parser {
 	/** adds a control flow entry from 'from' block to 'to' block */
 	private void addControlFlow(BasicBlock from, BasicBlock to) {
 		from.addControlFlow(to);
+	}
+
+	private void addDominatee(BasicBlock from, BasicBlock to) {
+		from.addDominatee(to);
 	}
 
 	private void addVarToSymbolTable(Map<String, Variable> symbolTable, Variable varToAdd) throws ParsingException{

@@ -1,2 +1,3 @@
-/target/
+dlx_compiler/target/
 *.class
+/target/

@@ -369,13 +369,13 @@ public class TestScanner
     	token = scanner.nextToken();
     	assertEquals(Kind.CLS_PAREN, token.kind); 
     }
+    
     @Test
     public void testComment() {
     	Scanner scanner = new Scanner("src/test/resources/unit_tests/comment.txt");
     	Token token = scanner.nextToken();
     	assertEquals(Kind.EOF, token.kind);   
     }
-    
     
     @Test
     public void testCommentWithIdent() {

@@ -6,36 +6,57 @@ import java.util.Map;
 
 import compiler.components.parser.Instruction;
 
+/**
+ * This class represents a basic block in our parser.
+ * Basic blocks are used to model the control flow of the
+ * program.  Edges between basic blocks are represented by 
+ * the list of basic blocks that the current block contains.
+ * <p> 
+ * For example, in the {@link BasicBlock#controlFlow} list,
+ * each basic block in this is a destination.  So, from this 
+ * we can derive the fact that there exists an edge from the current
+ * block to the block(s) in the list. 
+ * </p> * 
+ * 
+ * @author John Palomo and Cameron Chitsaz
+ *
+ */
 public class BasicBlock {
-	private List<Integer> instructions;
-	private List<BasicBlock> controlFlow;
+	public List<Integer> instructions;
+	public List<BasicBlock> controlFlow;
+	public List<BasicBlock> dominatees;
+
 	public Integer blockNumber;
 	public static int BLOCK_NUM = 0;
 	
 	public BasicBlock() {
 		instructions = new LinkedList<Integer>();
 		controlFlow = new LinkedList<BasicBlock>();
+		dominatees = new LinkedList<BasicBlock>();
 		this.blockNumber = BLOCK_NUM++;
 	}
 
 	/**
 	 * Adds an instruction to the list in sequential order
-	 * @param instruction
+	 * 
+	 * @param instruction 
 	 */
 	public void addInstruction(Integer instructionNumber) {
 		instructions.add(instructionNumber);
 	}
 
+	/**
+	 * Adds an 'edge' from this block to the block
+	 * parameter.
+	 * 
+	 * @param to the destination block 
+	 */
 	public void addControlFlow(BasicBlock to){
 		controlFlow.add(to);
 	}
 
-	public List<Integer> getInstructions() {
-		return instructions;
-	}
-
-	public List<BasicBlock> getControlFlow() {
-		return controlFlow;
+	public void addDominatee(BasicBlock dom){
+		dominatees.add(dom);
 	}
 
 	/**
