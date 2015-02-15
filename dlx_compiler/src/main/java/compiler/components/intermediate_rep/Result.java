@@ -33,6 +33,10 @@ public class Result {
 		return varValue.split("_")[0];
 	}
 
+	public int getVariableIndex() {
+		return Integer.valueOf(varValue.split("_")[1]);
+	}
+
 	public String toString(){
 		if(type.equals(ResultEnum.CONSTANT)) {
 			return "#" + constValue.toString();

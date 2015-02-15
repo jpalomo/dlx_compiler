@@ -106,7 +106,7 @@ public class VCGWriter {
 	}
 	
 	private void writeBBInstructions(BasicBlock bb) {
-		for (Integer instNum : bb.instructions) {
+		for (Integer instNum : bb.getInstructions()) {
 			writer.println();
 			writer.print(programInstructions.get(instNum).toString());
 		}

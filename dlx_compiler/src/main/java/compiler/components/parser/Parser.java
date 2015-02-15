@@ -43,7 +43,7 @@ public class Parser {
 	public BasicBlock loopHeader = null;
 
 
-	Map<Integer, BasicBlock> blockMap = new HashMap<Integer, BasicBlock>();
+	public Map<Integer, BasicBlock> blockMap = new HashMap<Integer, BasicBlock>();
 
 	public boolean comingFromLeft = true;
 
@@ -630,7 +630,7 @@ public class Parser {
 	}
 
 	private void addDominatee(BasicBlock from, BasicBlock to) {
-		from.addDominatee(to);
+		//from.addDominatee(to);
 	}
 
 	private void addVarToSymbolTable(Map<String, Variable> symbolTable, Variable varToAdd) throws ParsingException{
@@ -671,6 +671,10 @@ public class Parser {
 
 	public void printInstructions(){
 		Instruction.printInstructions();
+	}
+
+	public Map<Integer, Instruction> getProgramInstructions(){
+		return Instruction.programInstructions;
 	}
 
 	public Variable getCurrentVarName(String ident) throws ParsingException {

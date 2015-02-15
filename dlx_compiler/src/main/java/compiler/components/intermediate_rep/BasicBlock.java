@@ -22,7 +22,9 @@ import compiler.components.parser.Instruction;
  *
  */
 public class BasicBlock {
-	public List<Integer> instructions;
+	private List<Integer> instructions;
+	public List<Integer> phiInstructions;
+
 	public List<BasicBlock> controlFlow;
 	public List<BasicBlock> dominatees;
 
@@ -31,8 +33,10 @@ public class BasicBlock {
 	
 	public BasicBlock() {
 		instructions = new LinkedList<Integer>();
+		phiInstructions = new LinkedList<Integer>();
 		controlFlow = new LinkedList<BasicBlock>();
 		dominatees = new LinkedList<BasicBlock>();
+
 		this.blockNumber = BLOCK_NUM++;
 	}
 
@@ -43,6 +47,16 @@ public class BasicBlock {
 	 */
 	public void addInstruction(Integer instructionNumber) {
 		instructions.add(instructionNumber);
+	}
+
+	public void addPhiInstruction(Integer phiInstructionNum){
+		phiInstructions.add(phiInstructionNum);
+	}
+
+	public List<Integer> getInstructions() {
+		List<Integer> allInstructions = new LinkedList<Integer>(phiInstructions);
+		allInstructions.addAll(instructions);
+		return allInstructions; 
 	}
 
 	/**

@@ -22,7 +22,8 @@ public class Instruction {
 		NEG, ADD, SUB, MUL, DIV, CMP, ADDA, LOAD, STORE, MOVE, PHI, END, BRA, BNE, BEQ, BLE, BLT, BGE, BGT, READ, WRITE, WLN, CALL, RETURN, POP, PUSH, SAVE_STATUS, MEM,
 	}
 
-	EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
+	public static EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
+	public static EnumSet<OP> ARITHMETIC_INST = EnumSet.of( OP.ADD, OP.DIV, OP.MUL, OP.SUB);
 
 	public static List<String> predefined = new ArrayList<String>();
 	static{
@@ -42,27 +43,57 @@ public class Instruction {
 	public static Parser parser;
 
 	/****************************************Instruction Class Definition Begin****************************************/
-	OP op;
-	Result leftOperand;
-	Result rightOperand;
-	Integer instNum;
-	Integer blockNumber;
+	public OP op;
+	public Result leftOperand;
+	public Result rightOperand;
+	public Integer instNum;
+	public Integer blockNumber;
+	public InstType type;
+
+	public enum InstType{
+		IC(), CP();
+	}
 
 	public Instruction(OP operation, Result leftOperand, Result rightOperand) {
 		this.op = operation;
 		this.leftOperand = leftOperand;
 		this.rightOperand = rightOperand;
 		this.instNum = PC++;
+		this.type = InstType.IC;
 	}
 
-	public Instruction() { //TODO arguemtns needs to be added
+	private Instruction() { //TODO arguemtns needs to be added
 		
 	}
+
+	public static Instruction CSEInstruction(int instrNumber){
+		Instruction inst = new Instruction();
+		inst.type = InstType.CP;
+		inst.instNum = instrNumber;
+		return inst;
+	} 
 
 	public Instruction(OP op){
 		this.op = op;
 		this.instNum = PC++;
+		this.type = InstType.IC;
 	}
+
+	/**
+	 * Returns a formatted string of the instruction: format = 1d:%6s %4s %4s
+	 */
+	public String toString() {
+		if(type.equals(InstType.CP)){
+			return "=(" + instNum + ")";
+		}
+
+		String left = leftOperand.toString();
+		String right = rightOperand.toString();
+
+		String s = String.format("%-1d: %-6s %4s %4s", instNum, op.toString(), left, right); 
+		return s;
+	} 
+
 
 	/***************************************Instruction Class Definition End
 	 * @throws ParsingException ******************************************/
@@ -100,7 +131,7 @@ public class Instruction {
 		
 		String currentVarWithoutIndex = varToInsert.getVarNameWithoutIndex(); 
 		BasicBlock currentJoinBlock = parser.joinBlockStack.peek();  //get the current join block to generate phi instruction in
-		List<Integer> allInstructions = currentJoinBlock.instructions;
+		List<Integer> allInstructions = currentJoinBlock.getInstructions();;
 
 		Instruction instruction;
 		for(int instNum: allInstructions) {
@@ -299,16 +330,6 @@ public class Instruction {
 		return null;
 	}
 
-	/**
-	 * Returns a formatted string of the instruction: format = 1d:%6s %4s %4s
-	 */
-	public String toString() {
-		String left = leftOperand.toString();
-		String right = rightOperand.toString();
-
-		String s = String.format("%-1d: %-6s %4s %4s", instNum, op.toString(), left, right); 
-		return s;
-	}
 
 	public static void createReturn(Result result) {
 		Instruction returnInst = new Instruction(OP.RETURN, result, EMPTY_RESULT);
@@ -326,7 +347,8 @@ public class Instruction {
 	public static void addPhiInstruction(Instruction instruction){
 		programInstructions.put(instruction.instNum, instruction);
 		BasicBlock joinBlock = parser.joinBlockStack.peek();
-		joinBlock.addInstruction(instruction.instNum);
+		//joinBlock.addInstruction(instruction.instNum);
+		joinBlock.addPhiInstruction(instruction.instNum);
 		instruction.blockNumber = joinBlock.blockNumber;
 		LOGGER.info(instruction.toString());
 	}
