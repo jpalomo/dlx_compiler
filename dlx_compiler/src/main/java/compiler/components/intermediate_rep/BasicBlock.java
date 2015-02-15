@@ -85,16 +85,21 @@ public class BasicBlock {
 
 		sb.append("Instructions:");
 		for(Integer instNum: instructions) {
-			s = String.format("\n\t%d\t%s", instNum, programInstructions.get(instNum).toString());
+			s = String.format("\n %d=%s", instNum, programInstructions.get(instNum).toString());
 			sb.append(s);
 		}
 
-		sb.append("Controls:");
+		sb.append("\nControls:");
 		for(BasicBlock bb: controlFlow) {
-			s = String.format("\n\t%d", bb.blockNumber);
+			s = String.format(" %d", bb.blockNumber);
 			sb.append(s);
 		}
 
+		sb.append("\nDominates:");
+		for(BasicBlock bb: dominatees) {
+			s = String.format("%d", bb.blockNumber);
+			sb.append(s);
+		} 
 		return sb.toString();
 	}
 

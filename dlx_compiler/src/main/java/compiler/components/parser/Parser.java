@@ -37,11 +37,12 @@ public class Parser {
 	public Stack<BasicBlock> joinBlockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> whileFollowStack = new Stack<BasicBlock>();
 
+	public Stack<BasicBlock> loopHeaderStack = new Stack<BasicBlock>();
+
 	public Stack<Integer> stackDepth = new Stack<Integer>();
 
 	public boolean inLoop = false;
 	public BasicBlock loopHeader = null;
-
 
 	public Map<Integer, BasicBlock> blockMap = new HashMap<Integer, BasicBlock>();
 
@@ -329,7 +330,8 @@ public class Parser {
 		joinBlockStack.push(joinBlock);
 
 		BasicBlock mainDominator = blockStack.peek();
-		addDominatee(mainDominator, joinBlock);
+		loopHeaderStack.push(mainDominator);
+		//addDominatee(mainDominator, joinBlock);
 
 		Result follow = new Result();
 		follow.fixUp = 0; 
@@ -340,12 +342,13 @@ public class Parser {
 		expect(Kind.THEN); 
 
 		BasicBlock ifBodyBlock = createBasicBlock();
-		addControlFlow(blockStack.peek(), ifBodyBlock);  //current block -> ifbodyblock
+		addControlFlow(mainDominator, ifBodyBlock);  //current block -> ifbodyblock
+		addDominatee(mainDominator, ifBodyBlock);
 
 		blockStack.push(ifBodyBlock);
 		statSequence(); // parse 'then' block
 
-        addDominatee(mainDominator, blockStack.peek());
+        //addDominatee(mainDominator, blockStack.peek());
 		if (accept(Kind.ELSE)) {
 			comingFromLeft = false;
 			eatToken(); // eat the else
@@ -358,7 +361,9 @@ public class Parser {
 
 			BasicBlock elseBodyBlock = createBasicBlock();
 			addControlFlow(blockStack.peek(), elseBodyBlock); //current block -> elsebodyblock 
-			addDominatee(mainDominator, elseBodyBlock);
+//			addDominatee(mainDominator, elseBodyBlock);
+
+			addDominatee(loopHeaderStack.peek(), elseBodyBlock);
 
 			blockStack.push(elseBodyBlock);
 			statSequence();
@@ -376,6 +381,13 @@ public class Parser {
 		}
 		//push the join block for our current block
 		blockStack.push(joinBlockStack.pop());
+
+		//dominator 
+		if(loopHeaderStack.size() == 1) {
+			addDominatee(mainDominator, joinBlock);
+		}
+
+		loopHeaderStack.pop();
 		
 		expect(Kind.FI);
 
@@ -579,7 +591,7 @@ public class Parser {
 
 	/** ident = letter { letter | digit } */
 	private String ident() {
-		LOGGER.debug("Identifier found: " + currentToken.getLexeme());
+		LOGGER.trace("Identifier found: " + currentToken.getLexeme());
         String ident = currentToken.getLexeme();
 		eatToken(); // eat the identifier
 		return ident;
@@ -587,7 +599,7 @@ public class Parser {
 
 	/** number = digit {digit} */
 	private int number() {
-		LOGGER.debug("Number found: " + currentToken.getLexeme());
+		LOGGER.trace("Number found: " + currentToken.getLexeme());
 		int num = Integer.valueOf(currentToken.getLexeme());
 		eatToken(); // eat the number
 		return num;
@@ -626,11 +638,13 @@ public class Parser {
 
 	/** adds a control flow entry from 'from' block to 'to' block */
 	private void addControlFlow(BasicBlock from, BasicBlock to) {
+		LOGGER.debug("Control flows from:" + from.blockNumber + " to " + to.blockNumber);
 		from.addControlFlow(to);
 	}
 
 	private void addDominatee(BasicBlock from, BasicBlock to) {
-		//from.addDominatee(to);
+		LOGGER.debug("Block:" + from.blockNumber + " dominates " + to.blockNumber);
+		from.addDominatee(to);
 	}
 
 	private void addVarToSymbolTable(Map<String, Variable> symbolTable, Variable varToAdd) throws ParsingException{

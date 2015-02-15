@@ -341,7 +341,7 @@ public class Instruction {
 		BasicBlock basicBlock = parser.blockStack.peek();
 		basicBlock.addInstruction(instruction.instNum);
 		instruction.blockNumber = basicBlock.blockNumber;
-		LOGGER.info(instruction.toString());
+		LOGGER.debug(instruction.toString());
 	}
 
 	public static void addPhiInstruction(Instruction instruction){
@@ -350,7 +350,7 @@ public class Instruction {
 		//joinBlock.addInstruction(instruction.instNum);
 		joinBlock.addPhiInstruction(instruction.instNum);
 		instruction.blockNumber = joinBlock.blockNumber;
-		LOGGER.info(instruction.toString());
+		LOGGER.debug(instruction.toString());
 	}
 
 
