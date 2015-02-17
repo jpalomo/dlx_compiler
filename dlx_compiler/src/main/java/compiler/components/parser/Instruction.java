@@ -366,42 +366,39 @@ public class Instruction {
     public static Result loadArrayIndex(Variable arrayVar, Result exprResult) {
         List<Integer> arrayDims = arrayVar.getArrayDimSize();
 
-        Result constant = new Result(ResultEnum.CONSTANT);
-        constant.constValue = 4;
-
         Result framePoint = new Result(ResultEnum.VARIABLE);
         framePoint.varValue = "FP";
-
-        List<Result> arrayIndicies = exprResult.arrayExprs;
-        if(arrayDims.size() == 2) {  //we have a two d array
+       	
+        Result constant = new Result(ResultEnum.CONSTANT);
+        
+       	List<Result> arrayIndicies = exprResult.arrayExprs;
+        
+       	if(arrayDims.size() > 1) {  //we have a two or more d array
         	//get the num of columns in the array declaration
             Result numofColumn = new Result(ResultEnum.CONSTANT);
             numofColumn.constValue = arrayDims.get(1);
-
-            /*TODO these will always be constants, perform constant folding to remove an instruction, not necessary now tho
-            int rowOffsetarrayDims.get(1) * arrayIndicies.get(0);
-            */
-            //mul row * NoOfcolums (in original array decl)
-            Result rowToRetrieve = arrayIndicies.get(0);
-            Instruction rowOffset = new Instruction(OP.MUL, rowToRetrieve, numofColumn);  //add the final offsetbb
-            addInstruction(rowOffset);  
-
-            //once we are the particular row, find the column of the element
-            Result rowOffsetResult = new Result(ResultEnum.INSTR);
-            rowOffsetResult.instrNum = rowOffset.instNum;
-            Result columnToRetrieve = arrayIndicies.get(1);
-            Instruction load = new Instruction(OP.ADD, rowOffsetResult, columnToRetrieve);  //add the final offset
-            addInstruction(load);  
-
-            //multiple previous arithmetic to calculate offset by word size (4)
-            Result addressOffset = new Result(ResultEnum.INSTR);
-            addressOffset.instrNum = load.instNum;
-            Instruction finalOffset = new Instruction(OP.MUL, addressOffset, constant);  //add the final offset
-            addInstruction(finalOffset);  
-        }
-        else if (arrayDims.size() == 3){
-            //do some other stuff here for 3d arrays (didnt see any arrays greater than 4d) 
-        }
+            
+            // do all the muls first
+            for (int i = arrayDims.size()-1; i >= 0; i--) {
+                Result c = new Result(ResultEnum.CONSTANT);
+                c.constValue = (int) Math.pow((double) 2, (double)(i+2));
+            	
+            	Result rowToRetrieve = arrayIndicies.get(arrayDims.size()-1-i);
+                Instruction rowOffset = new Instruction(OP.MUL, rowToRetrieve, c);
+                addInstruction(rowOffset);
+            }
+            
+            // do all adds for the muls
+            for (int i = 0; i < arrayDims.size()-1; i++) { 
+            	Result c = new Result(ResultEnum.INSTR);
+            	c.instrNum = PC - arrayDims.size() + i;
+            	Result d = new Result(ResultEnum.INSTR);
+            	d.instrNum = PC - arrayDims.size() + i + 1;
+            	Instruction addOfMuls = new Instruction(OP.ADD, c, d);
+                addInstruction(addOfMuls);
+            }
+        
+       	}
         else {
             //single dimension array
             Instruction load = new Instruction(OP.MUL, constant, arrayIndicies.get(0));  //add the final offset
@@ -422,9 +419,9 @@ public class Instruction {
     private static Instruction loadArray() {
         //create the adda
         Result inst1 = new Result(ResultEnum.INSTR);
-        inst1.instrNum = PC - 1;
+        inst1.instrNum = PC - 2;
         Result inst2  = new Result(ResultEnum.INSTR);
-        inst2.instrNum = PC - 2;
+        inst2.instrNum = PC - 1;
         Instruction adda = new Instruction(OP.ADDA, inst1, inst2); 
         addInstruction(adda);
 

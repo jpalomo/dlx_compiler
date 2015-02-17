@@ -1,90 +1,151 @@
 package compiler.components.optimization;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import compiler.components.intermediate_rep.BasicBlock;
 import compiler.components.intermediate_rep.Result;
 import compiler.components.intermediate_rep.Result.ResultEnum;
 import compiler.components.parser.Instruction;
-import compiler.components.parser.Instruction.InstType;
-import compiler.components.parser.Parser;
 
 public class CopyPropagation {
 
+	static Logger LOGGER = LoggerFactory.getLogger(CopyPropagation.class);
+
+	Map<String, Integer> variableTable = new HashMap<String, Integer>();
 	Map<Integer, Instruction> originalInstructions;
-	Map<Integer, Instruction> cseInstructions;
-	Map<Integer, BasicBlock> blockMap;
 
-	public CopyPropagation(Parser parser){
-		//copy all the instructions to a local copy
-		originalInstructions = new HashMap<Integer, Instruction>(parser.getProgramInstructions());
+	public CopyPropagation(BasicBlock root, Map<Integer, Instruction> orig) {
+		originalInstructions = new HashMap<Integer, Instruction>(orig);
+		depthFirstPropagation(root);
+		Instruction.programInstructions = originalInstructions;
 
-		cseInstructions = new HashMap<Integer, Instruction>(parser.getProgramInstructions());
-
-		blockMap = new HashMap<Integer, BasicBlock>(parser.blockMap); 
 	}
 
-	public void optimize(){
-		for(int i =1; i <= originalInstructions.size(); i++) {
-			Instruction instr = originalInstructions.get(i);
-			if(instr.op.equals(Instruction.OP.MOVE)){
-				if(instr.leftOperand.type.equals(ResultEnum.VARIABLE)){
-					if(instr.rightOperand.type.equals(ResultEnum.VARIABLE)){
-						//this instruction is the same as the assignment of the left operand 
-						Instruction inst = cseInstructions.get(instr.leftOperand.getVariableIndex());
-						int num = getInstNum(inst);
-						cseInstructions.put(i, Instruction.CSEInstruction(num)); 
-					}
-				}
-				else if(instr.rightOperand.equals(ResultEnum.VARIABLE)){
-					if(instr.type.equals(ResultEnum.VARIABLE)){
-						//this instruction is the same as the assignment of the left operand 
-						Instruction inst = cseInstructions.get(instr.leftOperand.getVariableIndex());
-						int num = getInstNum(inst);
-						cseInstructions.put(i, Instruction.CSEInstruction(num)); 
-					}
-				}
+	public void depthFirstPropagation(BasicBlock b) {
+
+		List<Integer> blockInstructions = b.getInstructions();
+		for (int i = 0; i < blockInstructions.size(); i++) {
+
+			Instruction currentIns = originalInstructions.get(blockInstructions.get(i));
+
+			if (currentIns.op.equals(Instruction.OP.MOVE)) {
+				movEncountered(b, i);
+			} else {
+				otherEncountered(b, i);
 			}
-			else if(Instruction.ARITHMETIC_INST.contains(instr.op)) {
-				if(instr.leftOperand.type.equals(ResultEnum.VARIABLE)) {
-					Instruction inst = cseInstructions.get(instr.leftOperand.getVariableIndex());
-					int num = getInstNum(inst);
+		}
+		for (BasicBlock d : b.dominatees) {
+			variableTable = new HashMap<String, Integer>();
+			depthFirstPropagation(d);
+		}
+	}
+	
+	public void movEncountered(BasicBlock b, int insIndex) {
+		// if a move instruction is encountered then we need to add any variables that aren't already in the variableTable in there 
+		// and then check all instructions below this one and replace any instances
 
-					Result result1 = new Result(ResultEnum.INSTR);
-					result1.instrNum = num;
+		List<Integer> blockInstructions = b.getInstructions();
+		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex));		
+		
+		if ((currentIns.leftOperand.type.equals(Result.ResultEnum.VARIABLE) && !(variableTable.containsKey(currentIns.leftOperand.varValue)))) {
+			variableTable.put(currentIns.leftOperand.varValue, 0);
+			currentIns.leftOperand.type = ResultEnum.INSTR;
+			currentIns.leftOperand.instrNum = 0;
+			LOGGER.debug("adding left and right operand varvalue: " + currentIns.leftOperand.varValue + " with value: " + 0);;
+			if (variableTable.containsKey(currentIns.rightOperand.varValue)) {
 
-					if(instr.rightOperand.equals(ResultEnum.VARIABLE)) {
-						Instruction inst2 = cseInstructions.get(instr.leftOperand.getVariableIndex());
-						int num2 = getInstNum(inst2);
-						Result result2 = new Result(ResultEnum.INSTR);
-						result2.instrNum = num2;
-						
-						inst.leftOperand = result1;
-						inst.rightOperand = result2;
+				variableTable.put(currentIns.rightOperand.varValue, 0);
+				LOGGER.debug("adding right operand varValue : " + currentIns.rightOperand.varValue + " with value: " + 0);
+			}
 
-						cseInstructions.put(i, inst);
-
-					}
-					else {
-
-						inst.leftOperand = result1;
-						cseInstructions.put(i, inst);
-					}
-
-
+		}
+		else {
+			if (currentIns.rightOperand.varValue != "") {
+				if (variableTable.containsKey(currentIns.leftOperand.varValue)) {
+					variableTable.put(currentIns.rightOperand.varValue, variableTable.get(currentIns.leftOperand.varValue));
+					LOGGER.debug("adding left operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + variableTable.get(currentIns.leftOperand.varValue));
+				} else {
+					variableTable.put(currentIns.rightOperand.varValue, insIndex + 1);
+					LOGGER.debug("adding left operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + (insIndex + 1));
 				}
 			}
 		}
+
+		String varToReplace = currentIns.rightOperand.varValue;
+		replaceVars(b, insIndex, varToReplace);
+		
+	}
+	
+	public void otherEncountered(BasicBlock b, int insIndex) {
+		// means an instruction other than a move was encountered. in this case just look to see if any operands within this operations
+		// should be replaced with instructions in the variableTable
+
+		List<Integer> blockInstructions = b.getInstructions();
+		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex));
+
+		if (currentIns.leftOperand.type.equals(ResultEnum.VARIABLE)) {
+			// check if its in the variableTable and then replace
+			if (variableTable.containsKey(currentIns.leftOperand.varValue)) {
+				currentIns.leftOperand.instrNum = variableTable.get(currentIns.leftOperand.varValue);
+				currentIns.leftOperand.type = ResultEnum.INSTR;
+				LOGGER.debug("replacing left operand varvalue: " + currentIns.leftOperand.varValue + " with value: " + currentIns.leftOperand.instrNum);
+			}
+		}
+
+		if (currentIns.rightOperand.type.equals(ResultEnum.VARIABLE)) {
+			// check if its in the variableTable and then replace
+			if (variableTable.containsKey(currentIns.rightOperand.varValue)) {
+				currentIns.rightOperand.instrNum = variableTable.get(currentIns.rightOperand.varValue);
+				currentIns.rightOperand.type = ResultEnum.INSTR;
+				LOGGER.debug("replacing left operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + currentIns.rightOperand.instrNum);
+			}
+		}
+
 	}
 
-	private int getInstNum(Instruction inst) {
-		int num = inst.instNum;
+	public void replaceVars(BasicBlock b, int insIndex, String varToReplace) {
+		// replace in a depth first search manner when
 
-		while(inst.type.equals(InstType.CP)) {
-			inst = cseInstructions.get(inst.instNum);
-			num = inst.instNum;
-		} 
-		return num;
+		List<Integer> blockInstructions = b.getInstructions();
+
+		// for the remaining instructions inside the same basic block
+		for (int j = insIndex + 1; j < blockInstructions.size(); j++) {
+
+			Instruction currentIns2 = originalInstructions.get(blockInstructions.get(j));
+
+			LOGGER.debug("instruction operator: " + currentIns2.op);
+
+
+			if (currentIns2.leftOperand.varValue.equals(varToReplace)) {
+				currentIns2.leftOperand.type = ResultEnum.INSTR;
+				currentIns2.leftOperand.instrNum = variableTable.get(varToReplace);
+				LOGGER.debug("replacing left operand varvalue: " + currentIns2.leftOperand.varValue + " with value: " + currentIns2.leftOperand.instrNum);
+
+			}
+
+			if (currentIns2.rightOperand.varValue.equals(varToReplace)) {
+				currentIns2.rightOperand.type = ResultEnum.INSTR;
+				currentIns2.rightOperand.instrNum = variableTable.get(varToReplace);
+				LOGGER.debug("replacing right operand varvalue: " + currentIns2.rightOperand.varValue + " with value: " + currentIns2.rightOperand.instrNum);
+
+			}
+
+		}
+
+		for (BasicBlock d : b.dominatees) {
+			replaceVars(d, 0, varToReplace);
+		}
+
+	}
+
+	public void printTable() {
+		for(String s: variableTable.keySet()) {
+			System.out.println(s + ":" + variableTable.get(s));
+		}
 	}
 }

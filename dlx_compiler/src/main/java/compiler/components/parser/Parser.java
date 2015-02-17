@@ -18,6 +18,7 @@ import compiler.components.lex.Token.Kind;
 import compiler.components.parser.Variable.VarType;
 
 //TODO different colored arrows for functions
+
 /**
  * Implementation of a top-down recursive descent parser.
  *
@@ -383,9 +384,7 @@ public class Parser {
 		blockStack.push(joinBlockStack.pop());
 
 		//dominator 
-		if(loopHeaderStack.size() == 1) {
-			addDominatee(mainDominator, joinBlock);
-		}
+		addDominatee(mainDominator, joinBlock);
 
 		loopHeaderStack.pop();
 		
@@ -407,12 +406,13 @@ public class Parser {
 		 */
 		BasicBlock incomingBlock = createBasicBlock();
 
-		stackDepth.push(1);
 		if(stackDepth.size() < 1) {
 			inLoop = true;
 			loopHeader = incomingBlock;
 		}
+		stackDepth.push(1);
 		
+		addDominatee(blockStack.peek(), incomingBlock);
 		addControlFlow(blockStack.pop(), incomingBlock);  //remove the previous block and add control flow from it to the new block
 		joinBlockStack.push(incomingBlock);
 		blockStack.push(incomingBlock);
@@ -435,7 +435,7 @@ public class Parser {
 		Instruction.fixUp(relation.fixUp);  //fix up branching when relation is false (jump over the while)
 		
 		whileBodyBlock = joinBlockStack.pop();  //done generating instructions for the body
-		addDominatee(loopHeader, whileBodyBlock);
+		addDominatee(incomingBlock, whileBodyBlock);
 		if(joinBlockStack.size() - 1 > 0) {
 			addControlFlow(incomingBlock, whileBodyBlock); 
 			addControlFlow(blockStack.peek(), joinBlockStack.peek());
@@ -453,9 +453,8 @@ public class Parser {
 
 		joinBlockStack.pop();
 
-		if(stackDepth.size() == 1) {
-			addDominatee(loopHeader, followBlock);
-		}
+		addDominatee(incomingBlock, followBlock);
+		
 		stackDepth.pop();
 
 
@@ -503,6 +502,7 @@ public class Parser {
 			eatToken(); // eat the open bracket
 			Result expr = expression();
 			result.arrayExprs.add(expr);
+			// perform array operations here? - cameron
 			expect(Kind.CLS_BRACK);
 		}
 

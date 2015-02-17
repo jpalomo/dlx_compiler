@@ -7,7 +7,7 @@ public class Result {
 	public ResultEnum type = null;
 	public Integer constValue = null;
 	public Integer fixUp = null;
-	public String varValue = null;
+	public String varValue = "";
 	public String conditionValue = null;  //TODO what will this get set to?
 	public Integer instrNum = null;
 	public String funcName = null;
