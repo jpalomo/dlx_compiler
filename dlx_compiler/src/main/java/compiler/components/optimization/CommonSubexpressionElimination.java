@@ -17,6 +17,7 @@ import compiler.components.parser.Instruction;
 import compiler.components.parser.Instruction.OP;
 
 //TODO REMOVE ALL CP INSTRUCTIONS
+//TODO change the test cases to ensure vairables are being initialized
 
 public class CommonSubexpressionElimination {
 	static Logger LOGGER = LoggerFactory.getLogger(CommonSubexpressionElimination.class);
