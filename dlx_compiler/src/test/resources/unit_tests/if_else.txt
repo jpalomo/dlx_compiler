@@ -2,9 +2,9 @@ main
 var a, b, d;
 {
 	if a < 0 then
-		let b <- 1
+		let a <- a + 3
 	else 
-		let a <- 1
+		let a <- a + 1
 	fi;
-	let d <- 2
+	let a <- 2
 }.
