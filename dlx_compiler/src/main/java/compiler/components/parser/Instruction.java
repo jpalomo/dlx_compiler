@@ -5,6 +5,7 @@ import static compiler.components.intermediate_rep.Result.EMPTY_RESULT;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +20,7 @@ public class Instruction {
 	static Logger LOGGER = LoggerFactory.getLogger(Instruction.class);
 
 	public static enum OP {
-		NEG, ADD, SUB, MUL, DIV, CMP, ADDA, LOAD, STORE, MOVE, PHI, END, BRA, BNE, BEQ, BLE, BLT, BGE, BGT, READ, WRITE, WLN, CALL, RETURN, POP, PUSH, SAVE_STATUS, MEM,
+		CP_CONST, CP_INS, NEG, ADD, SUB, MUL, DIV, CMP, ADDA, LOAD, STORE, MOVE, PHI, END, BRA, BNE, BEQ, BLE, BLT, BGE, BGT, READ, WRITE, WLN, CALL, RETURN, POP, PUSH, SAVE_STATUS, MEM,
 	}
 
 	public static EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
@@ -88,11 +89,32 @@ public class Instruction {
 		}
 
 		String left = leftOperand.toString();
+
 		String right = rightOperand.toString();
 
 		String s = String.format("%-1d: %-6s %4s %4s", instNum, op.toString(), left, right); 
 		return s;
 	} 
+
+	@Override
+	public boolean equals(Object o) {
+		if(o instanceof Instruction) {
+
+			Instruction ins = (Instruction) o;
+
+			if (this.op.equals(ins.op)) {
+
+				if (this.leftOperand.equals(ins.leftOperand)) {
+					return this.rightOperand.equals(ins.rightOperand);
+				}
+
+				if (this.leftOperand.equals(ins.rightOperand)) {
+					return this.rightOperand.equals(ins.leftOperand);
+				}
+			}
+		}
+		return false;
+	}
 
 
 	/***************************************Instruction Class Definition End
@@ -103,19 +125,23 @@ public class Instruction {
 		Result result = new Result(ResultEnum.INSTR);
 		Instruction assignInst;
 
+		if(PC ==7 ) {
+			System.out.println("");
+		}
+
 	    if(r1.arrayExprs.size() > 0) {
-	       assignInst = new Instruction(OP.STORE, r1, r2);  //store to an array
+	       assignInst = new Instruction(OP.STORE, Result.clone(r1), Result.clone(r2));  //store to an array
 	    }
 	    else {
 	    	if(r1.type.equals(ResultEnum.VARIABLE) && ((r2.type.equals(ResultEnum.CONSTANT) || r2.type.equals(ResultEnum.INSTR)))) {
 	    		//we want the assignment with a vairable and constant to be of the form
 	    		//MOVE const/instr Variable
-	    		assignInst = new Instruction(OP.MOVE, r2, r1);
-	    		generatePhi(r1);
+	    		assignInst = new Instruction(OP.MOVE, Result.clone(r2), Result.clone(r1));
+	    		generatePhi(Result.clone(r1));
 	    	}
 	    	else {
-	    		assignInst = new Instruction(OP.MOVE, r1, r2);
-	    		generatePhi(r2);
+	    		assignInst = new Instruction(OP.MOVE, Result.clone(r1), Result.clone(r2));
+	    		generatePhi(Result.clone(r2));
 	    	}
 	    }
 	    
@@ -131,6 +157,7 @@ public class Instruction {
 		
 		String currentVarWithoutIndex = varToInsert.getVarNameWithoutIndex(); 
 		BasicBlock currentJoinBlock = parser.joinBlockStack.peek();  //get the current join block to generate phi instruction in
+
 		List<Integer> allInstructions = currentJoinBlock.getInstructions();;
 
 		Instruction instruction;
@@ -219,7 +246,7 @@ public class Instruction {
 				operator = op.equals("+") ? OP.ADD : OP.SUB;
 			}
 
-			Instruction instruction = new Instruction(operator, r2, r1);
+			Instruction instruction = new Instruction(operator, Result.clone(r2), Result.clone(r1));
 			result.instrNum = instruction.instNum;
 
 			addInstruction(instruction);
@@ -232,7 +259,7 @@ public class Instruction {
 		Result result = new Result(ResultEnum.CONDITION);
 		result.conditionValue = relationalOp;
 
-		Instruction instruction = new Instruction(OP.CMP, r1, r2);
+		Instruction instruction = new Instruction(OP.CMP, Result.clone(r1), Result.clone(r2));
 		addInstruction(instruction);
 
 		result.instrNum = instruction.instNum;
@@ -247,7 +274,7 @@ public class Instruction {
 		Result r = new Result(ResultEnum.INSTR);
 		r.instrNum = PC - 1;  //do the branch comparison on the previous instruction
 
-		Instruction condJumpFwdInstr = new Instruction(invertedRelop, r, EMPTY_RESULT);
+		Instruction condJumpFwdInstr = new Instruction(invertedRelop, Result.clone(r), EMPTY_RESULT);
 
 		addInstruction(condJumpFwdInstr);
 		x.fixUp = PC - 1;
@@ -278,14 +305,14 @@ public class Instruction {
 	           loadArrayIndex(var, arg);
 		       Result instResult = new Result(ResultEnum.INSTR);
 		       instResult.instrNum = PC -1;
-	           Instruction push = new Instruction(OP.PUSH, instResult, Result.EMPTY_RESULT);
+	           Instruction push = new Instruction(OP.PUSH, Result.clone(instResult), Result.EMPTY_RESULT);
 	           addInstruction(push);
 	       }
 	       else {
 	    	   //TODO this needs to be fixed? -> currently not working because it tries to get the 
 	    	   //SSA name from the map
 
-	           Instruction push = new Instruction(OP.PUSH, arg, Result.EMPTY_RESULT); 
+	           Instruction push = new Instruction(OP.PUSH, Result.clone(arg), Result.EMPTY_RESULT); 
 	           addInstruction(push);
 	       }
 
@@ -332,7 +359,7 @@ public class Instruction {
 
 
 	public static void createReturn(Result result) {
-		Instruction returnInst = new Instruction(OP.RETURN, result, EMPTY_RESULT);
+		Instruction returnInst = new Instruction(OP.RETURN, Result.clone(result), EMPTY_RESULT);
 		addInstruction(returnInst);
 	}
 
@@ -341,16 +368,46 @@ public class Instruction {
 		BasicBlock basicBlock = parser.blockStack.peek();
 		basicBlock.addInstruction(instruction.instNum);
 		instruction.blockNumber = basicBlock.blockNumber;
-		LOGGER.debug(instruction.toString());
+		LOGGER.trace(instruction.toString());
 	}
 
 	public static void addPhiInstruction(Instruction instruction){
 		programInstructions.put(instruction.instNum, instruction);
 		BasicBlock joinBlock = parser.joinBlockStack.peek();
-		//joinBlock.addInstruction(instruction.instNum);
 		joinBlock.addPhiInstruction(instruction.instNum);
+		propogatePhi(instruction);
 		instruction.blockNumber = joinBlock.blockNumber;
-		LOGGER.debug(instruction.toString());
+		LOGGER.trace(instruction.toString());
+	}
+	
+	private static void propogatePhi(Instruction phiInstruction) {
+
+		if(parser.joinBlockStack.size() > 1) {
+			BasicBlock outerMostJoin = parser.joinBlockStack.firstElement();
+			for (int i = 0; i < outerMostJoin.phiInstructions.size(); i++) {
+				Instruction outerPhi = programInstructions.get(outerMostJoin.phiInstructions.get(i));
+				
+				if(parser.comingFromLeft) {
+					if(outerPhi.leftOperand.getVarNameWithoutIndex().equals(phiInstruction.leftOperand.getVarNameWithoutIndex())) {
+						outerPhi.leftOperand.varValue = new String(outerPhi.leftOperand.getVarNameWithoutIndex() + "_" + phiInstruction.instNum);
+						return;
+					}
+				} 
+				else if (!parser.comingFromLeft) {
+					if(outerPhi.rightOperand.getVarNameWithoutIndex().equals(phiInstruction.rightOperand.getVarNameWithoutIndex())) {
+						outerPhi.rightOperand.varValue = new String(outerPhi.rightOperand.getVarNameWithoutIndex() + "_" + phiInstruction.instNum);
+                        return;
+					}
+				} 
+				
+				Instruction newPhiToAdd = new Instruction(OP.PHI);
+				newPhiToAdd.leftOperand = Result.clone(phiInstruction.leftOperand);
+				newPhiToAdd.rightOperand = Result.clone(phiInstruction.rightOperand);
+				outerMostJoin.addPhiInstruction(newPhiToAdd.instNum);
+				programInstructions.put(newPhiToAdd.instNum, newPhiToAdd); 
+			}
+		}
+		
 	}
 
 
@@ -384,7 +441,7 @@ public class Instruction {
                 c.constValue = (int) Math.pow((double) 2, (double)(i+2));
             	
             	Result rowToRetrieve = arrayIndicies.get(arrayDims.size()-1-i);
-                Instruction rowOffset = new Instruction(OP.MUL, rowToRetrieve, c);
+                Instruction rowOffset = new Instruction(OP.MUL, Result.clone(rowToRetrieve), c);
                 addInstruction(rowOffset);
             }
             
@@ -394,19 +451,19 @@ public class Instruction {
             	c.instrNum = PC - arrayDims.size() + i;
             	Result d = new Result(ResultEnum.INSTR);
             	d.instrNum = PC - arrayDims.size() + i + 1;
-            	Instruction addOfMuls = new Instruction(OP.ADD, c, d);
+            	Instruction addOfMuls = new Instruction(OP.ADD, Result.clone(c), Result.clone(d));
                 addInstruction(addOfMuls);
             }
         
        	}
         else {
             //single dimension array
-            Instruction load = new Instruction(OP.MUL, constant, arrayIndicies.get(0));  //add the final offset
+            Instruction load = new Instruction(OP.MUL, Result.clone(constant), Result.clone(arrayIndicies.get(0)));  //add the final offset
             addInstruction(load);  
         }
 
         //reference the base address of the array
-        Instruction addFP = new Instruction(OP.ADD, framePoint, exprResult);
+        Instruction addFP = new Instruction(OP.ADD, Result.clone(framePoint),Result.clone(exprResult));
         addInstruction(addFP);
         
         Instruction adda = loadArray();
@@ -422,13 +479,13 @@ public class Instruction {
         inst1.instrNum = PC - 2;
         Result inst2  = new Result(ResultEnum.INSTR);
         inst2.instrNum = PC - 1;
-        Instruction adda = new Instruction(OP.ADDA, inst1, inst2); 
+        Instruction adda = new Instruction(OP.ADDA, Result.clone(inst1), Result.clone(inst2)); 
         addInstruction(adda);
 
         //create the load
         Result inst3 = new Result(ResultEnum.INSTR);
         inst3.instrNum = PC - 1;
-        Instruction load = new Instruction(OP.LOAD, inst3, Result.EMPTY_RESULT);
+        Instruction load = new Instruction(OP.LOAD, Result.clone(inst3), Result.EMPTY_RESULT);
         addInstruction(load);
         
         return load;
@@ -442,7 +499,7 @@ public class Instruction {
     public static void createBackJump(int backJumpInstruction) {
         Result backJumpResult = new Result(ResultEnum.INSTR);
         backJumpResult.instrNum = backJumpInstruction;
-        Instruction backJump = new Instruction(OP.BRA, backJumpResult, Result.EMPTY_RESULT);
+        Instruction backJump = new Instruction(OP.BRA, Result.clone(backJumpResult), Result.EMPTY_RESULT);
         addInstruction(backJump);
     }
 }

@@ -37,6 +37,7 @@ public class Parser {
 	public Stack<BasicBlock> blockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> joinBlockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> whileFollowStack = new Stack<BasicBlock>();
+	public Stack<Map<String,Variable>> localSymbols = new Stack<Map<String,Variable>>();
 
 	public Stack<BasicBlock> loopHeaderStack = new Stack<BasicBlock>();
 
@@ -59,7 +60,9 @@ public class Parser {
 	public Parser(String fileName) {
 		scanner = new Scanner(fileName);
 		glblSymbolTable = new HashMap<String, Variable>();
+		localSymbols.push(glblSymbolTable);
 		functionSymbolTable = new HashMap<String, Function>();
+		symbols = new HashMap<String, Variable>();
 
 		// add the predefined functions to the symbol table 
 		functionSymbolTable.put("InputNum", new Function("read", new ArrayList<String>(), glblSymbolTable));
@@ -327,12 +330,13 @@ public class Parser {
 	private Result ifStatement() throws ParsingException {
 		expect(Kind.IF);
 
+		Map<String, Variable> symbolsCopy = copySymbols(); 
+
 		BasicBlock joinBlock = createBasicBlock();
 		joinBlockStack.push(joinBlock);
 
 		BasicBlock mainDominator = blockStack.peek();
 		loopHeaderStack.push(mainDominator);
-		//addDominatee(mainDominator, joinBlock);
 
 		Result follow = new Result();
 		follow.fixUp = 0; 
@@ -349,8 +353,8 @@ public class Parser {
 		blockStack.push(ifBodyBlock);
 		statSequence(); // parse 'then' block
 
-        //addDominatee(mainDominator, blockStack.peek());
 		if (accept(Kind.ELSE)) {
+			glblSymbolTable = symbolsCopy;
 			comingFromLeft = false;
 			eatToken(); // eat the else
 
@@ -362,7 +366,6 @@ public class Parser {
 
 			BasicBlock elseBodyBlock = createBasicBlock();
 			addControlFlow(blockStack.peek(), elseBodyBlock); //current block -> elsebodyblock 
-//			addDominatee(mainDominator, elseBodyBlock);
 
 			addDominatee(loopHeaderStack.peek(), elseBodyBlock);
 
@@ -381,6 +384,7 @@ public class Parser {
 			addControlFlow(blockStack.pop(), joinBlockStack.peek());
 		}
 		//push the join block for our current block
+		LOGGER.debug("If Statement Join Block Numbr: " + joinBlockStack.firstElement().blockNumber);
 		blockStack.push(joinBlockStack.pop());
 
 		//dominator 
@@ -390,6 +394,7 @@ public class Parser {
 		
 		expect(Kind.FI);
 
+		glblSymbolTable = symbolsCopy;
 		return relation;
 	}
 
@@ -638,12 +643,12 @@ public class Parser {
 
 	/** adds a control flow entry from 'from' block to 'to' block */
 	private void addControlFlow(BasicBlock from, BasicBlock to) {
-		LOGGER.debug("Control flows from:" + from.blockNumber + " to " + to.blockNumber);
+		LOGGER.trace("Control flows from:" + from.blockNumber + " to " + to.blockNumber);
 		from.addControlFlow(to);
 	}
 
 	private void addDominatee(BasicBlock from, BasicBlock to) {
-		LOGGER.debug("Block:" + from.blockNumber + " dominates " + to.blockNumber);
+		LOGGER.trace("Block:" + from.blockNumber + " dominates " + to.blockNumber);
 		from.addDominatee(to);
 	}
 
@@ -665,8 +670,7 @@ public class Parser {
 				}
 			}
 		}
-
-		if (glblSymbolTable != null) {
+		else if (glblSymbolTable != null) {
 			for (String var : glblSymbolTable.keySet()) {
 				if (origVarName.equals(var)) {
 					glblSymbolTable.put(origVarName, varToAdd);
@@ -726,5 +730,19 @@ public class Parser {
 
 	public BasicBlock getCurrentBlock() {
 		return blockStack.get(blockStack.size()-1);
+	}
+
+	public Map<String, Variable> copySymbols() {
+		Map<String, Variable> copySymbols = new HashMap<String, Variable>();
+
+		for(String s: glblSymbolTable.keySet()) {
+			copySymbols.put(s, Variable.clone(glblSymbolTable.get(s)));
+		}
+
+		for(String s: symbols.keySet()){
+			copySymbols.put(s, Variable.clone(symbols.get(s))); 
+		}
+
+		return copySymbols;
 	}
 }

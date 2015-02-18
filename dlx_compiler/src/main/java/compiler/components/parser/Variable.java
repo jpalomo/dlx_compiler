@@ -1,5 +1,6 @@
 package compiler.components.parser;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,6 +33,10 @@ public class Variable {
         else if(type.equals(VarType.ARRAY)) {
         	isArray = true;
         }
+    }
+
+    private Variable() {
+    	
     }
 
     public String getVarIdentifier() {
@@ -84,5 +89,16 @@ public class Variable {
             }
         }
         return totalDimSize;
+    }
+
+    public static Variable clone(Variable v) {
+    	Variable var = new Variable();
+    	var.arrayDimSize = new ArrayList<Integer>(v.arrayDimSize);
+    	var.isArray = new Boolean(v.isArray);
+    	var.isVar = new Boolean(v.isVar);
+    	var.previousSSAIndex = v.previousSSAIndex;
+    	var.ssaIndex = new Integer(v.ssaIndex);
+    	var.varIdentifier = new String(v.varIdentifier);
+    	return var;
     }
 }

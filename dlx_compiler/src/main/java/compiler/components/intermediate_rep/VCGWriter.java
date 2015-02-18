@@ -49,7 +49,7 @@ public class VCGWriter {
 			writeBBInstructions(bb);
 			emitExitBasicBlock();
 			printedNodes.add(bb.blockNumber);
-			LOGGER.debug("Printing block number:" + bb.toString());
+			LOGGER.trace("Printing block number:" + bb.toString());
 
 		}
 		else {
@@ -82,7 +82,7 @@ public class VCGWriter {
 			writeBBInstructions(bb);
 			emitExitBasicBlock();
 			printedNodes.add(bb.blockNumber);
-			LOGGER.debug("Printing block number:" + bb.toString());
+			LOGGER.trace("Printing block number:" + bb.toString());
 
 		}
 		else {

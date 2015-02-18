@@ -60,4 +60,47 @@ public class Result {
 			return super.toString();
 	}
 
+	public static Result clone(Result thingToClone) {
+		Result r = new Result();
+		r.type = thingToClone.type;
+		if (thingToClone.constValue != null) {
+			r.constValue = new Integer(thingToClone.constValue);
+		}
+		if (thingToClone.fixUp != null ) {
+			r.fixUp = new Integer(thingToClone.fixUp);
+		}
+		
+		r.varValue = new String(thingToClone.varValue);
+
+		r.conditionValue = thingToClone.conditionValue;  //TODO what will thingToClone get set to?
+		if (thingToClone.instrNum != null) {
+			r.instrNum = new Integer(thingToClone.instrNum);
+		}
+		r.funcName = thingToClone.funcName;
+		
+		return r;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if(obj instanceof Result) {
+			Result r = (Result) obj;
+			if(r.type.equals(this.type)) {
+				if(this.type.equals(ResultEnum.EMPTY)) {
+					return true;
+				}
+
+				if(type.equals(ResultEnum.INSTR)) {
+					return this.instrNum == r.instrNum;
+				}
+				else if(type.equals(ResultEnum.VARIABLE)) {
+					return this.varValue.equals(r.varValue);
+				}
+				else if(type.equals(ResultEnum.CONSTANT)) {
+					return this.constValue == r.constValue;
+				}
+			}
+		}
+		return false;
+	}
 }

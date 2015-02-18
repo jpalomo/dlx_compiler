@@ -22,7 +22,7 @@ import compiler.components.parser.Instruction;
  *
  */
 public class BasicBlock {
-	private List<Integer> instructions;
+	public List<Integer> instructions;
 	public List<Integer> phiInstructions;
 
 	public List<BasicBlock> controlFlow;
@@ -57,6 +57,21 @@ public class BasicBlock {
 		List<Integer> allInstructions = new LinkedList<Integer>(phiInstructions);
 		allInstructions.addAll(instructions);
 		return allInstructions; 
+	}
+
+	public void removeInstruction(int instrToRemove) {
+		if(phiInstructions.size() > 0) {
+			if(phiInstructions.contains(instrToRemove)) {
+				phiInstructions.remove(new Integer(instrToRemove));
+				return;
+			}
+		}
+		if(instructions.size() > 0) {
+			if(instructions.contains(instrToRemove)) {
+				instructions.remove(new Integer(instrToRemove));
+				return;
+			}
+		}
 	}
 
 	/**
