@@ -5,7 +5,6 @@ import static compiler.components.intermediate_rep.Result.EMPTY_RESULT;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -90,7 +89,7 @@ public class Instruction {
 
 		String left = leftOperand.toString();
 
-		String right = rightOperand.toString();
+        String right = rightOperand.toString();
 
 		String s = String.format("%-1d: %-6s %4s %4s", instNum, op.toString(), left, right); 
 		return s;
@@ -125,10 +124,6 @@ public class Instruction {
 		Result result = new Result(ResultEnum.INSTR);
 		Instruction assignInst;
 
-		if(PC ==7 ) {
-			System.out.println("");
-		}
-
 	    if(r1.arrayExprs.size() > 0) {
 	       assignInst = new Instruction(OP.STORE, Result.clone(r1), Result.clone(r2));  //store to an array
 	    }
@@ -137,11 +132,15 @@ public class Instruction {
 	    		//we want the assignment with a vairable and constant to be of the form
 	    		//MOVE const/instr Variable
 	    		assignInst = new Instruction(OP.MOVE, Result.clone(r2), Result.clone(r1));
-	    		generatePhi(Result.clone(r1));
+	    		if(r1.type.equals(ResultEnum.VARIABLE) && r1.arrayExprs.size()  < 1) { //not an array
+	    			generatePhi(Result.clone(r1));
+	    		}
 	    	}
 	    	else {
 	    		assignInst = new Instruction(OP.MOVE, Result.clone(r1), Result.clone(r2));
-	    		generatePhi(Result.clone(r2));
+	    		if(r2.type.equals(ResultEnum.VARIABLE) && r2.arrayExprs.size()  < 1) { //not an array
+	    			generatePhi(Result.clone(r2));
+	    		}	    	
 	    	}
 	    }
 	    
@@ -458,6 +457,7 @@ public class Instruction {
        	}
         else {
             //single dimension array
+        	constant.constValue = 4;
             Instruction load = new Instruction(OP.MUL, Result.clone(constant), Result.clone(arrayIndicies.get(0)));  //add the final offset
             addInstruction(load);  
         }

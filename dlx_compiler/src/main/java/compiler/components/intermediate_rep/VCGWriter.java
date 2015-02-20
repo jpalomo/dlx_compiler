@@ -63,7 +63,12 @@ public class VCGWriter {
 					+ "\"");
 			writer.println("targetname: " + "\"" + controlFlow.blockNumber
 					+ "\"");
-			writer.println("color: red");
+			if((!bb.isFunctionBlock) && (controlFlow.isFunctionBlock)) {
+				writer.println("color: blue");
+			} 
+			else {
+				writer.println("color: red");
+			}
 			writer.println("}");
 		}
 		for (BasicBlock controlFlow : bb.controlFlow) {

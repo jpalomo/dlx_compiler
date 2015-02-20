@@ -15,6 +15,7 @@ public class Function extends Result{
 	public List<String> params;
 	public Map<String, Variable> localSymbols;
 	public BasicBlock beginBlockForFunction;
+	public boolean hasBlocks = false;
 	
 	public Function(String funcName, List<String> params, Map<String,Variable> outerScopeSymbols, BasicBlock beginBlock){
 		super(ResultEnum.FUNCTION);
@@ -23,6 +24,7 @@ public class Function extends Result{
 		this.localSymbols = new HashMap<String, Variable>(outerScopeSymbols);
 		this.beginBlockForFunction = beginBlock;
 		addParamsToLocalSymbols(params);
+		this.hasBlocks = true;
 	}
 
 	public Function(String funcName, List<String> params, Map<String,Variable> outerScopeSymbols){

@@ -97,7 +97,9 @@ public class Variable {
     	var.isArray = new Boolean(v.isArray);
     	var.isVar = new Boolean(v.isVar);
     	var.previousSSAIndex = v.previousSSAIndex;
-    	var.ssaIndex = new Integer(v.ssaIndex);
+    	if(v.isVar) {
+    		var.ssaIndex = new Integer(v.ssaIndex);
+    	}
     	var.varIdentifier = new String(v.varIdentifier);
     	return var;
     }

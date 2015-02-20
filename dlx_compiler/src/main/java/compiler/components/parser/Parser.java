@@ -38,11 +38,13 @@ public class Parser {
 	public Stack<BasicBlock> joinBlockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> whileFollowStack = new Stack<BasicBlock>();
 	public Stack<Map<String,Variable>> localSymbols = new Stack<Map<String,Variable>>();
+	public List<Function> functionList = new ArrayList<Function>();
 
 	public Stack<BasicBlock> loopHeaderStack = new Stack<BasicBlock>();
 
 	public Stack<Integer> stackDepth = new Stack<Integer>();
 
+	public boolean isFunctionBlock = false;
 	public boolean inLoop = false;
 	public BasicBlock loopHeader = null;
 
@@ -102,6 +104,7 @@ public class Parser {
 			}
 		}
 		expect(Kind.PERIOD);
+		functionList.addAll(functionSymbolTable.values());
 		Instruction.endProgram();
 		blockStack.pop();
 		
@@ -149,7 +152,9 @@ public class Parser {
 		String funcName = ident();
 		List<String> formalParams = formalParam();
 
+		isFunctionBlock = true;
 		BasicBlock functionBlock = createBasicBlock();  //create a new block for function code
+		
 		Function function = new Function(funcName, formalParams, glblSymbolTable, functionBlock);
 		blockStack.push(functionBlock); //push the block onto the stack so that code gets generated in this block
 
@@ -160,7 +165,9 @@ public class Parser {
 		funcBody(function);
 
 		expect(Kind.SEMI_COL); 
-		blockStack.pop();  //resotre the stack
+		blockStack.pop();  //restore the stack
+
+		isFunctionBlock = false;
 	}
 
 	/** formalParam = '(' [ident { ',' ident }] ')' */
@@ -277,7 +284,7 @@ public class Parser {
            currentVar = getCurrentVarName(ident);
            designator = Instruction.loadArrayIndex(currentVar, desResult); 
         }
-        else{
+        else{ 
             currentVar = getCurrentVarName(ident);
             updateSSAVarSymbol(currentVar);
             designator = new Result(ResultEnum.VARIABLE);
@@ -479,12 +486,12 @@ public class Parser {
 		expect(Kind.RETURN);
 
 		Result result;
-		if (accept(Kind.IDENTIFIER) || accept(Kind.NUMBER)) {
+		if (accept(Kind.IDENTIFIER) || accept(Kind.NUMBER) || accept(Kind.CALL)) {
 			 result = expression();
-		} else if (accept(Kind.OPN_PAREN) || accept(Kind.FUNCTION)
-				|| accept(Kind.PROCEDURE)) { // identifier is not)
-			eatToken(); // eat the paren, 'function', or 'procedure' token
+		} else if (accept(Kind.OPN_PAREN) ) { // identifier is not)
+			eatToken(); // eat the paren
 			result = expression();
+			expect(Kind.CLS_PAREN);
 		}
 		else{
 			throw new ParsingException("Did not find the correct token in return statement: " + getLineNum());
@@ -718,6 +725,9 @@ public class Parser {
 	public BasicBlock createBasicBlock() {
 		BasicBlock bb = new BasicBlock(); 
 		blockMap.put(bb.blockNumber, bb);
+		if(isFunctionBlock) {
+			bb.isFunctionBlock = true;
+		}
 		return bb;
 	}
 

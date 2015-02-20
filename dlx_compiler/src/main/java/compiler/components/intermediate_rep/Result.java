@@ -97,8 +97,8 @@ public class Result {
 					return this.varValue.equals(r.varValue);
 				}
 				else if(type.equals(ResultEnum.CONSTANT)) {
-					return this.constValue == r.constValue;
-				}
+					return this.constValue.intValue() == r.constValue.intValue();
+				 }
 			}
 		}
 		return false;

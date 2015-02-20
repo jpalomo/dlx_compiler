@@ -27,6 +27,7 @@ public class BasicBlock {
 
 	public List<BasicBlock> controlFlow;
 	public List<BasicBlock> dominatees;
+	public boolean isFunctionBlock = false;
 
 	public Integer blockNumber;
 	public static int BLOCK_NUM = 0;
@@ -38,6 +39,11 @@ public class BasicBlock {
 		dominatees = new LinkedList<BasicBlock>();
 
 		this.blockNumber = BLOCK_NUM++;
+	}
+
+	public BasicBlock(boolean isFunctionBlock) {
+		this();
+		this.isFunctionBlock = isFunctionBlock;
 	}
 
 	/**

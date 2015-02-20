@@ -9,19 +9,31 @@ import org.junit.Test;
 import compiler.components.intermediate_rep.VCGWriter;
 import compiler.components.optimization.CommonSubexpressionElimination;
 import compiler.components.optimization.CopyPropagation;
+import compiler.components.parser.Function;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
 
 public class TestCommonSubexpressionElimination {
 	private static String VCG_OUTPUT_DIR = "src/test/resources/opvcg/";
+	private static String CFG_OUTPUT_DIR = "src/test/resources/vcg/";
 	private static final boolean RUN_XVCG = true;
 	private static final boolean PRINT_INSTRUCTIONS = false;
+	private static final boolean PRINT_CFG = true;
+	private static final boolean RUN_CFG = true;
 
 	@Before
 	public void setup() {
 		Instruction.programInstructions = new HashMap<Integer, Instruction>();
 		Instruction.PC = 1;
+	}
+
+	public void printCFG(Parser parser, String fileName){
+		if(PRINT_CFG){
+			VCGWriter vcg = new VCGWriter(CFG_OUTPUT_DIR + fileName, Instruction.programInstructions);
+			vcg.emitControlFlowGraph(parser.currentBlock);
+			vcg.close();
+		}
 	}
 
 	public void printDom(Parser parser, String fileName){
@@ -31,12 +43,21 @@ public class TestCommonSubexpressionElimination {
 
 		VCGWriter vcg = new VCGWriter(VCG_OUTPUT_DIR + fileName, Instruction.programInstructions);
 		vcg.emitDominatorGraph(parser.currentBlock);
+		for(Function f : parser.functionList) {
+			if(f.hasBlocks) { 
+				vcg.emitDominatorGraph(f.beginBlockForFunction);
+			}
+		}
 		vcg.close();
 	}
 
 	public void runXVCG(String fileName) throws IOException{
 		if(RUN_XVCG){
 			Runtime.getRuntime().exec("/usr/local/bin/xvcg " + VCG_OUTPUT_DIR + fileName); 
+		}
+		
+		if(RUN_CFG){
+			Runtime.getRuntime().exec("/usr/local/bin/xvcg " + CFG_OUTPUT_DIR + fileName); 
 		}
 	}
 	
@@ -45,8 +66,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test001.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		printDom(parser, "test001.txt.vcg");
 		runXVCG("test001.txt.vcg"); 
 	}
@@ -56,8 +77,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test002.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test002.txt.vcg");
 		runXVCG("test002.txt.vcg");
@@ -68,8 +89,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test003.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test003.txt.vcg");
 		runXVCG("test003.txt.vcg");
@@ -80,8 +101,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test004.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test004.txt.vcg");
 		runXVCG("test004.txt.vcg");
@@ -92,8 +113,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test005.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test005.txt.vcg");
 		runXVCG("test005.txt.vcg");
@@ -105,8 +126,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test006.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test006.txt.vcg");
 		runXVCG("test006.txt.vcg");
@@ -117,8 +138,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test007.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test007.txt.vcg");
 		runXVCG("test007.txt.vcg");
@@ -129,8 +150,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test008.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test008.txt.vcg");
 		runXVCG("test008.txt.vcg");
@@ -141,8 +162,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test009.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test009.txt.vcg");
 		runXVCG("test009.txt.vcg");
@@ -153,8 +174,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test010.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test010.txt.vcg");
 		runXVCG("test010.txt.vcg");
@@ -166,8 +187,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test011.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test011.txt.vcg");
 		runXVCG("test011.txt.vcg");
@@ -178,8 +199,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test012.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test012.txt.vcg");
 		runXVCG("test012.txt.vcg");
@@ -190,8 +211,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test013.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test013.txt.vcg");
 		runXVCG("test013.txt.vcg");
@@ -202,8 +223,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test014.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test014.txt.vcg");
 		runXVCG("test014.txt.vcg");
@@ -214,8 +235,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test015.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test015.txt.vcg");
 		runXVCG("test015.txt.vcg");
@@ -226,8 +247,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test016.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test016.txt.vcg");
 		runXVCG("test016.txt.vcg");
@@ -237,8 +258,8 @@ public class TestCommonSubexpressionElimination {
 	public void test017() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test017.txt"); 
 		parser.parse();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test017.txt.vcg");
 		runXVCG("test017.txt.vcg");
@@ -249,8 +270,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test018.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test018.txt.vcg");
 		runXVCG("test018.txt.vcg");
@@ -261,8 +282,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test019.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test019.txt.vcg");
 		runXVCG("test019.txt.vcg");
@@ -273,8 +294,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test020.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test020.txt.vcg");
 		runXVCG("test020.txt.vcg");
@@ -285,8 +306,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test021.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test021.txt.vcg");
 		runXVCG("test021.txt.vcg");
@@ -297,8 +318,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test022.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test022.txt.vcg");
 		runXVCG("test022.txt.vcg");
@@ -309,8 +330,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test023.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test023.txt.vcg");
 		runXVCG("test023.txt.vcg");
@@ -321,8 +342,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test024.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test024.txt.vcg");
 		runXVCG("test024.txt.vcg");
@@ -333,8 +354,9 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test025.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		printCFG(parser, "test025.txt.vcg");
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test025.txt.vcg");
 		runXVCG("test025.txt.vcg");
@@ -345,8 +367,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test026.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test026.txt.vcg");
 		runXVCG("test026.txt.vcg");
@@ -357,8 +379,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test027.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test027.txt.vcg");
 		runXVCG("test027.txt.vcg");
@@ -369,8 +391,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test028.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test028.txt.vcg");
 		runXVCG("test028.txt.vcg");
@@ -381,8 +403,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test029.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test029.txt.vcg");
 		runXVCG("test029.txt.vcg");
@@ -393,8 +415,8 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test030.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test030.txt.vcg");
 		runXVCG("test030.txt.vcg");
@@ -405,11 +427,33 @@ public class TestCommonSubexpressionElimination {
 		Parser parser = new Parser("src/test/resources/test031.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser.currentBlock, parser.getProgramInstructions());
-		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser.currentBlock, parser.getProgramInstructions());
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
 		printDom(parser, "test031.txt.vcg");
 		runXVCG("test031.txt.vcg");
 	}
 
-}
+	
+	@Test
+	public void testFactorial() throws ParsingException, IOException{
+		Parser parser = new Parser("src/test/resources/factorial.txt"); 
+		parser.parse();
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
+		propagator.printTable();
+		printDom(parser, "factorial.txt.vcg");
+		runXVCG("factorial.txt.vcg");
+	}
+
+	@Test
+	public void testArrayIfElse() throws ParsingException, IOException{
+		Parser parser = new Parser("src/test/resources/array_if_else.txt"); 
+		parser.parse();
+		parser.printInstructions();
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
+		propagator.printTable();
+		printDom(parser, "array_if_else.txt.vcg");
+		runXVCG("test031.txt.vcg");
+	}}

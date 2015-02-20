@@ -325,4 +325,14 @@ public class TestControlFlowGraph {
 		runXVCG("nested_while.txt.vcg");;
 
 	}
+
+	@Test  
+	public void arrayIfElse() throws ParsingException, IOException{
+		Parser parser = new Parser("src/test/resources/unit_tests/array_if_else.txt"); 
+		parser.parse();
+		printCFG(parser, "array_if_else.txt.vcg");
+		runXVCG("array_if_else.txt.vcg");
+	}
+
+	
 }

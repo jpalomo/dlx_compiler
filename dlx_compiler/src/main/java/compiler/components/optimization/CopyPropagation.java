@@ -10,7 +10,9 @@ import org.slf4j.LoggerFactory;
 import compiler.components.intermediate_rep.BasicBlock;
 import compiler.components.intermediate_rep.Result;
 import compiler.components.intermediate_rep.Result.ResultEnum;
+import compiler.components.parser.Function;
 import compiler.components.parser.Instruction;
+import compiler.components.parser.Parser;
 
 public class CopyPropagation {
 
@@ -19,9 +21,15 @@ public class CopyPropagation {
 	Map<String, Integer> variableTable = new HashMap<String, Integer>();
 	Map<Integer, Instruction> originalInstructions;
 
-	public CopyPropagation(BasicBlock root, Map<Integer, Instruction> orig) throws OptimizationException {
+	public CopyPropagation(Parser p, Map<Integer, Instruction> orig) throws OptimizationException {
 		originalInstructions = new HashMap<Integer, Instruction>(orig);
+		BasicBlock root = p.currentBlock;
 		depthFirstPropagation(root);
+		for(Function f : p.functionList) {
+			if(f.hasBlocks) { 
+				depthFirstPropagation(f.beginBlockForFunction);
+			}
+		}
 		Instruction.programInstructions = originalInstructions;
 
 	}
@@ -50,49 +58,40 @@ public class CopyPropagation {
 	}
 	
 	public void movEncountered(BasicBlock b, int insIndex) throws OptimizationException {
+		LOGGER.debug("###Enter moveEncountered###");
+		
 		// if a move instruction is encountered then we need to add any variables that aren't already in the variableTable in there 
 		// and then check all instructions below this one and replace any instances
 
 		List<Integer> blockInstructions = b.getInstructions();
 		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex-1));		
 		
-		if ((currentIns.leftOperand.type.equals(Result.ResultEnum.VARIABLE) && !(variableTable.containsKey(currentIns.leftOperand.varValue)))) {
-
+		if ((currentIns.leftOperand.type.equals(Result.ResultEnum.VARIABLE) && !(variableTable.containsKey(currentIns.leftOperand.varValue)) && !b.isFunctionBlock)) {
 			throw new OptimizationException("assigning unitilized vairable to another vairable." + currentIns.leftOperand.getVarNameWithoutIndex() + "->" + currentIns.rightOperand.varValue); 
-		/*	variableTable.put(currentIns.leftOperand.varValue, 0);
-			currentIns.leftOperand.type = ResultEnum.INSTR;
-			currentIns.leftOperand.instrNum = 0;
-			LOGGER.debug("adding left operand varvalue: " + currentIns.leftOperand.varValue + " with value: " + 0);;
-			if (!variableTable.containsKey(currentIns.rightOperand.varValue)) {
-
-				variableTable.put(currentIns.rightOperand.varValue, 0);
-				LOGGER.debug("adding right operand varValue : " + currentIns.rightOperand.varValue + " with value: " + 0);
-			}*/
-
 		}
-		else {
-			if (currentIns.rightOperand.varValue != "") {
-				if (variableTable.containsKey(currentIns.leftOperand.varValue)) {
-					variableTable.put(currentIns.rightOperand.varValue, variableTable.get(currentIns.leftOperand.varValue));
-					LOGGER.debug("adding left operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + variableTable.get(currentIns.leftOperand.varValue));
-				} else {
-					variableTable.put(currentIns.rightOperand.varValue, insIndex);
-					LOGGER.debug("adding right operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + (insIndex));
-				}
-			}
-		}
-
-		String varToReplace = currentIns.rightOperand.varValue;
-		replaceVars(b, insIndex, varToReplace);
 		
+		if (currentIns.rightOperand.type.equals(ResultEnum.VARIABLE)) {
+			LOGGER.debug("varValue: " + currentIns.rightOperand.varValue.trim());
+
+			if (variableTable.containsKey(currentIns.leftOperand.varValue)) {
+				variableTable.put(currentIns.rightOperand.varValue, variableTable.get(currentIns.leftOperand.varValue));
+				LOGGER.debug("adding left operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + variableTable.get(currentIns.leftOperand.varValue));
+			} else {
+				variableTable.put(currentIns.rightOperand.varValue, insIndex);
+				LOGGER.debug("adding right operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + (insIndex));
+			}
+			String varToReplace = currentIns.rightOperand.varValue;
+			replaceVars(b, insIndex, varToReplace);
+		}
+
+		LOGGER.debug("###Exit moveEncountered###");
 	}
 	
 	public void phiEncountered(BasicBlock b, int insIndex) {
+		LOGGER.debug("###Enter phiEncountered###");
 		List<Integer> blockInstructions = b.getInstructions();
 		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex-1));
 		
-		System.out.println("In here...");
-	
 		String varToReplace = null;
 		if (!variableTable.containsKey(currentIns.rightOperand.varValue) && currentIns.rightOperand.type.equals(ResultEnum.VARIABLE)) {
 			variableTable.put(currentIns.rightOperand.varValue, (currentIns.instNum));
@@ -108,15 +107,20 @@ public class CopyPropagation {
 			replaceVars(b, insIndex, varToReplace);
 		}
 		
+		LOGGER.debug("###Exit phiEncountered###");
 	}
 	
-	public void otherEncountered(BasicBlock b, int insIndex) {
+	public void otherEncountered(BasicBlock b, int insIndex) throws OptimizationException {
 		// means an instruction other than a move was encountered. in this case just look to see if any operands within this operations
 		// should be replaced with instructions in the variableTable
+		LOGGER.debug("###Enter otherEncountered###");
 
 		List<Integer> blockInstructions = b.getInstructions();
 		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex - 1));
 
+		if ((currentIns.leftOperand.type.equals(Result.ResultEnum.VARIABLE) && !(variableTable.containsKey(currentIns.leftOperand.varValue)) && !b.isFunctionBlock)) {
+			throw new OptimizationException("assigning unitilized vairable to another vairable." + currentIns.leftOperand.getVarNameWithoutIndex() + "->" + currentIns.rightOperand.varValue); 
+		}
 		if (currentIns.leftOperand.type.equals(ResultEnum.VARIABLE)) {
 			// check if its in the variableTable and then replace
 			if (variableTable.containsKey(currentIns.leftOperand.varValue)) {
@@ -139,6 +143,7 @@ public class CopyPropagation {
 				LOGGER.debug("replacing right operand varvalue: " + varValue + " with value: " + currentIns.rightOperand.instrNum);
 			}
 		}
+		LOGGER.debug("###Exit otherEncountered###");
 
 	}
 
@@ -159,6 +164,8 @@ public class CopyPropagation {
 			Instruction currentIns2 = originalInstructions.get(blockInstructions.get(j));
 
 			LOGGER.debug("instruction operator: " + currentIns2.op);
+			LOGGER.debug("instruction number: " + currentIns2.instNum);
+
 
 
 			if (currentIns2.leftOperand.varValue.equals(varToReplace)) {
