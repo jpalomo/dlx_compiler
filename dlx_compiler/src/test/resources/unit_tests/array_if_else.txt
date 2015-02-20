@@ -1,0 +1,14 @@
+main
+var a;
+array[1] b, d;
+{
+	let a <- 1;
+	if a < 0 then
+		let b[0] <- 3;
+		let a <- a + 3
+	else 
+		let b[0] <- 4
+	fi;
+	let b[0] <- 5;
+	let a <- a + b[0]
+}.
