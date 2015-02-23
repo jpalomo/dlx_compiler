@@ -25,6 +25,7 @@ public class CommonSubexpressionElimination {
 			.getLogger(CommonSubexpressionElimination.class);
 
 	public Map<Integer, Instruction> originalInstructions;
+	
 
 	public CommonSubexpressionElimination(Parser p, Map<Integer, Instruction> orig) {
 		originalInstructions = new HashMap<Integer, Instruction>(orig);
@@ -112,16 +113,22 @@ public class CommonSubexpressionElimination {
 
 			if (currentIns.rightOperand.type.equals(ResultEnum.INSTR)) {
 				if (currentIns.op.equals(Instruction.OP.CP_INS)) {
-					while (deletedIns .containsKey(currentIns.rightOperand.instrNum)) {
-						int temp = currentIns.rightOperand.instrNum;
-						currentIns.rightOperand.instrNum = deletedIns .get(currentIns.rightOperand.instrNum).leftOperand.instrNum; 
-						LOGGER.debug( "Updated right operand {} with {} in instruction {}", temp, currentIns.rightOperand.instrNum, currentIns);
-					}
-				} else {
 					while (deletedIns.containsKey(currentIns.rightOperand.instrNum)) {
 						int temp = currentIns.rightOperand.instrNum;
-						currentIns.rightOperand.instrNum = deletedIns .get(currentIns.rightOperand.instrNum).instNum;
-						LOGGER.debug( "Updated right operand {} with {} in instruction {}", temp, currentIns.rightOperand.instrNum, currentIns);
+						if (!deletedIns.get(currentIns.rightOperand.instrNum).op.equals(Instruction.OP.PHI))
+						{
+							currentIns.rightOperand.instrNum = deletedIns .get(currentIns.rightOperand.instrNum).leftOperand.instrNum; 
+							LOGGER.debug( "Updated right operand {} with {} in instruction {}", temp, currentIns.rightOperand.instrNum, currentIns);
+						}
+					}
+				} else {
+					while (deletedIns.containsKey(currentIns.rightOperand.instrNum) && !currentIns.op.equals(Instruction.OP.PHI)) {
+						int temp = currentIns.rightOperand.instrNum;
+						if (!deletedIns.get(currentIns.rightOperand.instrNum).op.equals(Instruction.OP.PHI))
+						{
+							currentIns.rightOperand.instrNum = deletedIns .get(currentIns.rightOperand.instrNum).instNum;
+							LOGGER.debug( "Updated right operand {} with {} in instruction {}", temp, currentIns.rightOperand.instrNum, currentIns);
+						}
 					}
 
 				}
@@ -132,15 +139,20 @@ public class CommonSubexpressionElimination {
 				if (currentIns.op.equals(Instruction.OP.CP_INS)) {
 					while (deletedIns.containsKey(currentIns.leftOperand.instrNum)) {
 						int temp = currentIns.leftOperand.instrNum;
-						currentIns.leftOperand.instrNum = deletedIns.get(currentIns.leftOperand.instrNum).leftOperand.instrNum;
-						LOGGER.debug( "Updated left operand {} with {} in instruction {}", temp, currentIns.leftOperand.instrNum, currentIns);
+						if (!deletedIns.get(currentIns.leftOperand.instrNum).op.equals(Instruction.OP.PHI))
+						{
+							currentIns.leftOperand.instrNum = deletedIns.get(currentIns.leftOperand.instrNum).leftOperand.instrNum;
+							LOGGER.debug( "Updated left operand {} with {} in instruction {}", temp, currentIns.leftOperand.instrNum, currentIns);
+						}
 					}
 				} else {
 					while (deletedIns.containsKey(currentIns.leftOperand.instrNum)) {
-						System.out.println("In here and updaing for block number: " + currentIns.instNum);
 						int temp = currentIns.leftOperand.instrNum;
-						currentIns.leftOperand.instrNum = deletedIns.get(currentIns.leftOperand.instrNum).instNum; 
-						LOGGER.debug( "Updated left operand {} with {} in instruction {}", temp, currentIns.leftOperand.instrNum, currentIns);
+						if (!deletedIns.get(currentIns.leftOperand.instrNum).op.equals(Instruction.OP.PHI))
+						{
+							currentIns.leftOperand.instrNum = deletedIns.get(currentIns.leftOperand.instrNum).instNum; 
+							LOGGER.debug( "Updated left operand {} with {} in instruction {}", temp, currentIns.leftOperand.instrNum, currentIns);
+						}
 					}
 				}
 			}
@@ -157,15 +169,24 @@ public class CommonSubexpressionElimination {
 		List<Integer> blockInstructions = b.getInstructions();
 		for (int i = 1; i <= blockInstructions.size(); i++) {
 
-			Instruction currentIns = originalInstructions.get(blockInstructions .get(i - 1));
+			Instruction currentIns = originalInstructions.get(blockInstructions.get(i - 1));
 
 			if (currentIns.op.equals(OP.MOVE)) {
 				if (currentIns.leftOperand.type.equals((ResultEnum.INSTR))) {
 					currentIns.op = OP.CP_INS;
+					checkOperands(currentIns);
+					System.out.println("Updating for instruction:" + currentIns);
 					currentIns.rightOperand = Result.EMPTY_RESULT;
-				} else if (currentIns.leftOperand.type
-						.equals((ResultEnum.CONSTANT))) {
+				} else if (currentIns.leftOperand.type.equals((ResultEnum.CONSTANT))) {
 					currentIns.op = OP.CP_CONST;
+					Instruction dummyInst = new Instruction(OP.PHI);
+					dummyInst.rightOperand = currentIns.rightOperand;
+					Result inst = new Result(ResultEnum.INSTR);
+					inst.instrNum = currentIns.instNum;
+					dummyInst.leftOperand = inst;
+					System.out.println("Updating for instruction:" + currentIns);
+
+					checkOperands(dummyInst);
 					currentIns.rightOperand = Result.EMPTY_RESULT;
 				}
 			}
@@ -174,6 +195,18 @@ public class CommonSubexpressionElimination {
 		for (BasicBlock d : b.dominatees) {
 			eliminateMoves(d);
 
+		}
+	}
+
+	private void checkOperands(Instruction currentIns) {
+		int instNum = currentIns.instNum;
+		for(Instruction inst: originalInstructions.values()) {
+			if (inst.leftOperand.equals(currentIns.rightOperand) && instNum != inst.instNum) {
+					inst.leftOperand = currentIns.leftOperand;
+			}
+			if (inst.rightOperand.equals(currentIns.rightOperand) && instNum != inst.instNum) { 
+					inst.rightOperand = currentIns.leftOperand;
+			}
 		}
 	}
 }

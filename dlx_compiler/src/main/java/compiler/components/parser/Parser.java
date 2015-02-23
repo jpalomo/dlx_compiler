@@ -402,7 +402,20 @@ public class Parser {
 		expect(Kind.FI);
 
 		glblSymbolTable = symbolsCopy;
+		updatePhis();
 		return relation;
+	}
+
+	private void updatePhis() throws ParsingException {
+		List<Integer> blockPhiInstructions = blockStack.peek().phiInstructions;
+		
+		for(Integer i : blockPhiInstructions) {
+			Instruction phiInst = getInstruction(i);
+			String ident = phiInst.leftOperand.getVarNameWithoutIndex();
+			Variable varToAdd = getCurrentVarName(ident);
+			updateSSAVarForPhi(varToAdd, i);
+		}
+		
 	}
 
 	/** whileStatement = 'while' relation 'do' statSequence 'od' */
@@ -666,10 +679,31 @@ public class Parser {
 		symbolTable.put(varToAdd.getVarIdentifier(), varToAdd); 
 	}
 
-	private void updateSSAVarSymbol(Variable varToAdd) throws ParsingException{
+	public void updateSSAVarSymbol(Variable varToAdd) throws ParsingException{
 		String origVarName = varToAdd.varIdentifier;
 		varToAdd.previousSSAIndex = varToAdd.ssaIndex;
 		varToAdd.ssaIndex = Instruction.PC;
+		if (symbols != null) {
+			for (String var : symbols.keySet()) {
+				if (origVarName.equals(var)) {
+					symbols.put(origVarName, varToAdd);
+				}
+			}
+		}
+		else if (glblSymbolTable != null) {
+			for (String var : glblSymbolTable.keySet()) {
+				if (origVarName.equals(var)) {
+					glblSymbolTable.put(origVarName, varToAdd);
+				}
+			}
+		} 
+	} 
+
+	public void updateSSAVarForPhi(Variable varToAdd, int phiInstNum) throws ParsingException{
+		String origVarName = varToAdd.varIdentifier;
+		varToAdd.previousSSAIndex = varToAdd.ssaIndex;
+		varToAdd.ssaIndex = phiInstNum;
+
 		if (symbols != null) {
 			for (String var : symbols.keySet()) {
 				if (origVarName.equals(var)) {
@@ -701,6 +735,11 @@ public class Parser {
 	public Map<Integer, Instruction> getProgramInstructions(){
 		return Instruction.programInstructions;
 	}
+
+	public Instruction getInstruction(int intsrNum){
+		return Instruction.programInstructions.get(intsrNum);
+	}
+
 
 	public Variable getCurrentVarName(String ident) throws ParsingException {
 	    if(symbols != null) {

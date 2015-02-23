@@ -151,16 +151,17 @@ public class Instruction {
 
 	private static void generatePhi(Result varToInsert) throws ParsingException {
 		if(parser.joinBlockStack.size() < 1){
-			return;  //not in a if or while
+			return;  //not in a if or while 
 		}
 		
 		String currentVarWithoutIndex = varToInsert.getVarNameWithoutIndex(); 
 		BasicBlock currentJoinBlock = parser.joinBlockStack.peek();  //get the current join block to generate phi instruction in
 
-		List<Integer> allInstructions = currentJoinBlock.getInstructions();;
+		List<Integer> allInstructions = currentJoinBlock.getInstructions();
 
 		Instruction instruction;
 		for(int instNum: allInstructions) {
+			
 			instruction = programInstructions.get(instNum);
 			if(instruction.op.equals(OP.PHI)){
 				if(instruction.leftOperand.getVarNameWithoutIndex().equals(currentVarWithoutIndex)){
@@ -399,14 +400,17 @@ public class Instruction {
 					}
 				} 
 				
-				Instruction newPhiToAdd = new Instruction(OP.PHI);
-				newPhiToAdd.leftOperand = Result.clone(phiInstruction.leftOperand);
-				newPhiToAdd.rightOperand = Result.clone(phiInstruction.rightOperand);
-				outerMostJoin.addPhiInstruction(newPhiToAdd.instNum);
-				programInstructions.put(newPhiToAdd.instNum, newPhiToAdd); 
+ 
 			}
-		}
 		
+			Instruction newPhiToAdd = new Instruction(OP.PHI);
+			newPhiToAdd.leftOperand = Result.clone(phiInstruction.leftOperand);
+			if (parser.comingFromLeft) newPhiToAdd.leftOperand.varValue = newPhiToAdd.leftOperand.getVarNameWithoutIndex() + "_" + phiInstruction.instNum;
+			newPhiToAdd.rightOperand = Result.clone(phiInstruction.rightOperand);
+			if (!parser.comingFromLeft) newPhiToAdd.rightOperand.varValue = newPhiToAdd.rightOperand.getVarNameWithoutIndex() + "_" + phiInstruction.instNum;
+			outerMostJoin.addPhiInstruction(newPhiToAdd.instNum);
+			programInstructions.put(newPhiToAdd.instNum, newPhiToAdd);
+		}
 	}
 
 

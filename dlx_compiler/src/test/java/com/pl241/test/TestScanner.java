@@ -1,4 +1,4 @@
-package com.palomo.pl241.test;
+package com.pl241.test;
 
 import static org.junit.Assert.*;
 

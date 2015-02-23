@@ -1,4 +1,4 @@
-package com.palomo.pl241.test;
+package com.pl241.test;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -394,7 +394,7 @@ public class TestCommonSubexpressionElimination {
 		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
 		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
 		propagator.printTable();
-		printDom(parser, "test028.txt.vcg");
+		printCFG(parser, "test028.txt.vcg");
 		runXVCG("test028.txt.vcg");
 	}
 	
@@ -456,4 +456,16 @@ public class TestCommonSubexpressionElimination {
 		propagator.printTable();
 		printDom(parser, "array_if_else.txt.vcg");
 		runXVCG("test031.txt.vcg");
-	}}
+	}
+	@Test
+	public void testIfElseIfElseIfElse() throws ParsingException, IOException {
+		Parser parser = new Parser("src/test/resources/unit_tests/if_else_if_else_else.txt"); 
+		parser.parse(); 
+		parser.printInstructions();
+		CopyPropagation propagator = new CopyPropagation(parser, parser.getProgramInstructions());
+		CommonSubexpressionElimination cse = new CommonSubexpressionElimination(parser, parser.getProgramInstructions());
+		propagator.printTable();
+		printCFG(parser, "if_else_if_else_else.txt.vcg");
+		runXVCG("if_else_if_else_else.txt.vcg");
+	}
+	}

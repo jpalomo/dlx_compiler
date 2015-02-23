@@ -1,4 +1,4 @@
-package com.palomo.pl241.test;
+package com.pl241.test;
 
 import java.io.IOException;
 import java.util.HashMap;

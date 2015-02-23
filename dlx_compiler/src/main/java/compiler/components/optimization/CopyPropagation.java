@@ -94,13 +94,13 @@ public class CopyPropagation {
 		
 		String varToReplace = null;
 		if (!variableTable.containsKey(currentIns.rightOperand.varValue) && currentIns.rightOperand.type.equals(ResultEnum.VARIABLE)) {
-			variableTable.put(currentIns.rightOperand.varValue, (currentIns.instNum));
-			varToReplace = currentIns.rightOperand.varValue;
-			LOGGER.debug("adding right operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + currentIns.instNum );
+			variableTable.put(currentIns.rightOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum, (currentIns.instNum));
+			varToReplace = currentIns.rightOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum;
+			LOGGER.debug("adding right operand varvalue: " + currentIns.rightOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum + " with value: " + currentIns.instNum );
 		} else if (!variableTable.containsKey(currentIns.leftOperand.varValue)  && currentIns.leftOperand.type.equals(ResultEnum.VARIABLE)) {
-			variableTable.put(currentIns.leftOperand.varValue, (currentIns.instNum));
-			varToReplace = currentIns.leftOperand.varValue;
-			LOGGER.debug("adding left operand varvalue: " + currentIns.leftOperand.varValue + " with value: " + (currentIns.instNum));
+			variableTable.put(currentIns.leftOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum, (currentIns.instNum));
+			varToReplace = currentIns.leftOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum;
+			LOGGER.debug("adding left operand varvalue: " + currentIns.leftOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum + " with value: " + (currentIns.instNum));
 		}
 		
 		if (varToReplace != null) {
@@ -119,6 +119,7 @@ public class CopyPropagation {
 		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex - 1));
 
 		if ((currentIns.leftOperand.type.equals(Result.ResultEnum.VARIABLE) && !(variableTable.containsKey(currentIns.leftOperand.varValue)) && !b.isFunctionBlock)) {
+			LOGGER.debug("OP: " + currentIns.op);
 			throw new OptimizationException("assigning unitilized vairable to another vairable." + currentIns.leftOperand.getVarNameWithoutIndex() + "->" + currentIns.rightOperand.varValue); 
 		}
 		if (currentIns.leftOperand.type.equals(ResultEnum.VARIABLE)) {
