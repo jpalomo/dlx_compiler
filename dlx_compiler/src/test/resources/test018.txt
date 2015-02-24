@@ -4,6 +4,11 @@ main
 procedure foo();
 var a, b, c, d, e, f, g, h;
 {
+	let a <- 1;
+	let b <- 2;
+	let c <- 3;
+	// not sure if the above needs to be added or not - cameron
+	
 	let c <- a + b;
 	let d <- c;
 	let e <- d * d;
