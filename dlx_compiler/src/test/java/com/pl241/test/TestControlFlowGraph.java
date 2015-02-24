@@ -28,7 +28,7 @@ public class TestControlFlowGraph {
 		}
 
 		VCGWriter vcg = new VCGWriter(VCG_OUTPUT_DIR + fileName, Instruction.programInstructions);
-		vcg.emitControlFlowGraph(parser.currentBlock);
+		vcg.emitControlFlowGraph(parser.root);
 		vcg.close();
 	}
 

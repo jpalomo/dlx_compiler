@@ -27,17 +27,17 @@ import compiler.components.parser.Variable.VarType;
 public class Parser {
 	static Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 	
+	private Scanner scanner;
 	public Token currentToken;
+	
 	public Map<String, Variable> glblSymbolTable;
 	public Map<String, Function> functionSymbolTable;
 	public Map<String, Variable> symbols;
-	private Scanner scanner;
 
-	public BasicBlock currentBlock;
+	public BasicBlock root;
 	public Stack<BasicBlock> blockStack = new Stack<BasicBlock>();
 	public Stack<BasicBlock> joinBlockStack = new Stack<BasicBlock>();
-	public Stack<BasicBlock> whileFollowStack = new Stack<BasicBlock>();
-	public Stack<Map<String,Variable>> localSymbols = new Stack<Map<String,Variable>>();
+	
 	public List<Function> functionList = new ArrayList<Function>();
 
 	public Stack<BasicBlock> loopHeaderStack = new Stack<BasicBlock>();
@@ -48,11 +48,13 @@ public class Parser {
 	public boolean inLoop = false;
 	public BasicBlock loopHeader = null;
 
+	//TODO DELTE NOT USING...
 	public Map<Integer, BasicBlock> blockMap = new HashMap<Integer, BasicBlock>();
 
 	public boolean comingFromLeft = true;
 
 	public static List<String> predefined = new ArrayList<String>();
+
 	static{
 		predefined.add("InputNum");
 		predefined.add("OutputNum");
@@ -62,7 +64,6 @@ public class Parser {
 	public Parser(String fileName) {
 		scanner = new Scanner(fileName);
 		glblSymbolTable = new HashMap<String, Variable>();
-		localSymbols.push(glblSymbolTable);
 		functionSymbolTable = new HashMap<String, Function>();
 		symbols = new HashMap<String, Variable>();
 
@@ -71,7 +72,7 @@ public class Parser {
 		functionSymbolTable.put("OutputNum", new Function("write", new ArrayList<String>(), glblSymbolTable));
 		functionSymbolTable.put("OutputNewLine", new Function("wln", new ArrayList<String>(), glblSymbolTable));
 
-		currentBlock = createBasicBlock();
+		root = createBasicBlock();
 		Instruction.parser = this;
 	}
 
@@ -95,8 +96,8 @@ public class Parser {
 			}
 			else if (accept(Kind.BEGIN)) {
 				eatToken(); // eat the open brace
-				currentBlock = createBasicBlock();
-				blockStack.push(currentBlock);
+				root = createBasicBlock();
+				blockStack.push(root);
 				statSequence();
 				expect(Kind.END);
 			} else {
@@ -197,7 +198,7 @@ public class Parser {
 			varDecl(localSymbolsTable);
 		} 
 
-		//set the symbols for other functions to find
+		//set the symbols for other methods to find
 		symbols = localSymbolsTable;
 
 		expect(Kind.BEGIN);
@@ -380,7 +381,8 @@ public class Parser {
 			statSequence();
 
 			comingFromLeft = true; 
-		} else {
+		} 
+		else {
 			Instruction.fixUp(relation.fixUp);
 			addControlFlow(blockStack.pop(), joinBlock); 
 		}
@@ -414,8 +416,7 @@ public class Parser {
 			String ident = phiInst.leftOperand.getVarNameWithoutIndex();
 			Variable varToAdd = getCurrentVarName(ident);
 			updateSSAVarForPhi(varToAdd, i);
-		}
-		
+		} 
 	}
 
 	/** whileStatement = 'while' relation 'do' statSequence 'od' */
@@ -481,7 +482,6 @@ public class Parser {
 		addDominatee(incomingBlock, followBlock);
 		
 		stackDepth.pop();
-
 
 		//For the sake of not returning null, we create an instruction result
 		Result result = new Result(ResultEnum.INSTR);
@@ -736,10 +736,13 @@ public class Parser {
 		return Instruction.programInstructions;
 	}
 
-	public Instruction getInstruction(int intsrNum){
+	private Instruction getInstruction(int intsrNum){
 		return Instruction.programInstructions.get(intsrNum);
 	}
 
+	public List<Integer> getPhiInstructionNumbers() {
+		return Instruction.phiInstructionNumbers;
+	}
 
 	public Variable getCurrentVarName(String ident) throws ParsingException {
 	    if(symbols != null) {

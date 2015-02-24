@@ -1,5 +1,12 @@
 package compiler.components.optimization;
 
+import static compiler.components.parser.Instruction.OP.MOVE;
+import static compiler.components.intermediate_rep.Result.ResultEnum.CONSTANT;
+import static compiler.components.intermediate_rep.Result.ResultEnum.INSTR;
+import static compiler.components.intermediate_rep.Result.EMPTY_RESULT; 
+import static compiler.components.parser.Instruction.OP.CP_CONST;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import compiler.components.intermediate_rep.BasicBlock;
 import compiler.components.intermediate_rep.Result;
-import compiler.components.intermediate_rep.Result.ResultEnum;
 import compiler.components.parser.Function;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Parser;
@@ -18,182 +24,147 @@ public class CopyPropagation {
 
 	static Logger LOGGER = LoggerFactory.getLogger(CopyPropagation.class);
 
-	Map<String, Integer> variableTable = new HashMap<String, Integer>();
-	Map<Integer, Instruction> originalInstructions;
+	private Map<Integer, Instruction> copyPropInstructions;
 
-	public CopyPropagation(Parser p, Map<Integer, Instruction> orig) throws OptimizationException {
-		originalInstructions = new HashMap<Integer, Instruction>(orig);
-		BasicBlock root = p.currentBlock;
-		depthFirstPropagation(root);
-		for(Function f : p.functionList) {
+	private List<Integer> phiInstructions;
+
+	public CopyPropagation(Parser parser, List<Integer> phiInstructionNumbers, Map<Integer, Instruction> orig) throws OptimizationException {
+		copyPropInstructions = new HashMap<Integer, Instruction>(orig);
+		phiInstructions = new ArrayList<Integer>(phiInstructionNumbers);
+		depthFirstPropagation(parser.root);
+
+		//perform CP on all function blocks
+		for(Function f : parser.functionList) {
 			if(f.hasBlocks) { 
 				depthFirstPropagation(f.beginBlockForFunction);
 			}
 		}
-		Instruction.programInstructions = originalInstructions;
 
+		//update the global instructions to reflect the copy propagation performed
+		Instruction.programInstructions = copyPropInstructions;
 	}
 
-	public void depthFirstPropagation(BasicBlock b) throws OptimizationException {
+	/**
+	 * This method performs a DFS on the dominator tree looking for values to propagate down the tree.
+	 * Specifically, it looks for move instructions.  Since all variables need to be initialized, all 
+	 * variables will have values associated with them.  The algorithm is not optimal but is straightforward:
+	 * 
+	 * 1.  Look for a MOVE instruction
+	 * 2.  Propagate the left hand operand of the move down the dominator through the block (e.g. MOVE #1 a_2)
+	 * 		-This will move the constant into all a_2 variables in the block.
+	 * 3.  Propagate the value (e.g. #1) through all the dominated blocks in a DFS manner.
+	 * 4.  Propagate the value through the PHI instructions.  
+	 * 		-Since this block may be connected to the block containing the PHI (join block), the value needs to be
+	 * 		pushed to the PHI.  We can be certain that this value does not cross the PHI instruction, so if
+	 * 		we process all the PHIs and don't find a replacement, this block was not part connected to a join block.
+	 * 
+	 * @param startBlock
+	 * @throws OptimizationException
+	 */
+	private void depthFirstPropagation(BasicBlock startBlock) throws OptimizationException {
 
-		List<Integer> blockInstructions = b.getInstructions();
-		for (int i = 1; i <= blockInstructions.size(); i++) {
+		List<Integer> blockInstructions = startBlock.getInstructions();
+		for(Integer instructionNo : blockInstructions) {
+			//get the instruction corresponding to the current instruction we are processing
+			Instruction currentInstruction = copyPropInstructions.get(instructionNo);
 
-			Instruction currentIns = originalInstructions.get(blockInstructions.get(i-1));
+			if(currentInstruction.op.equals(MOVE)) {
+				Result valueToPropogate = currentInstruction.leftOperand;
+				Result valueToReplace = currentInstruction.rightOperand;
 
-			if (currentIns.op.equals(Instruction.OP.MOVE)) {
-				movEncountered(b, i);
-			} 
-			else if (currentIns.op.equals(Instruction.OP.PHI)) {
-				phiEncountered(b, i);
-			}
-			else {
-				otherEncountered(b, i);
+				//if were moving a constant into a variable, we will update the instruction
+				if(currentInstruction.leftOperand.type.equals(CONSTANT)) {
+					//we do not want to propagate the constant, but the instruction
+					valueToPropogate = new Result(INSTR);
+					valueToPropogate.instrNum = currentInstruction.instNum;
+					currentInstruction.op = CP_CONST;
+					currentInstruction.rightOperand = EMPTY_RESULT;
+					LOGGER.debug("Found assignment of constant to variable, update instruction {} and propoate an instruction", currentInstruction.instNum, valueToPropogate);
+				}
+				else{
+					//remove the instruction from the block and the global instructions
+					LOGGER.debug("Removing instruction {} because it was propagated.", currentInstruction);
+					startBlock.removeInstruction(instructionNo);
+					copyPropInstructions.remove(instructionNo); 
+				}
+
+				//push the value down the current block
+				propagateValueDownBlock(startBlock, currentInstruction.instNum, valueToReplace, valueToPropogate);
+
+				//Go through blocks that this block dominates and update the values
+				propagateValueDownDominatorTree(startBlock, valueToReplace, valueToPropogate);
+
+				//update all the phis that may reference this variable
+				propagateValueThroughPhis(valueToReplace, valueToPropogate);
 			}
 		}
-		for (BasicBlock d : b.dominatees) {
-			variableTable = new HashMap<String, Integer>();
-			depthFirstPropagation(d);
+
+		//now process the rest of the dominated blocks looking for moves
+        for (BasicBlock dominatee : startBlock.dominatees) {
+			depthFirstPropagation(dominatee);
+        }
+	}
+
+	/**
+	 * This is a simple utility method that helps update the current block where the MOVE instruction was found.
+	 * It goes through all the current blocks instructions, first looking for the current MOVE instruction's 
+	 * instruction number.  Once it has found that instruction, it propagates the value down.
+	 */
+	private void propagateValueDownBlock(BasicBlock currentBlock, int startInstructionNo, Result valueToReplace, Result valueToPropogate) {
+		for(int i = 0; i < currentBlock.getInstructions().size(); i++) {
+			int blockInstructionNo = currentBlock.getInstructions().get(i);
+
+			//only want to update instructions that come after the startInstructionNo
+			if(blockInstructionNo <= startInstructionNo) {
+				continue;
+			}
+
+			Instruction currentInstruction = copyPropInstructions.get(blockInstructionNo);
+			updateInstruction(currentInstruction, valueToReplace, valueToPropogate); 
 		}
 	}
 	
-	public void movEncountered(BasicBlock b, int insIndex) throws OptimizationException {
-		LOGGER.debug("###Enter moveEncountered###");
-		
-		// if a move instruction is encountered then we need to add any variables that aren't already in the variableTable in there 
-		// and then check all instructions below this one and replace any instances
-
-		List<Integer> blockInstructions = b.getInstructions();
-		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex-1));		
-		
-		if ((currentIns.leftOperand.type.equals(Result.ResultEnum.VARIABLE) && !(variableTable.containsKey(currentIns.leftOperand.varValue)) && !b.isFunctionBlock)) {
-			throw new OptimizationException("assigning unitilized vairable to another vairable." + currentIns.leftOperand.getVarNameWithoutIndex() + "->" + currentIns.rightOperand.varValue); 
-		}
-		
-		if (currentIns.rightOperand.type.equals(ResultEnum.VARIABLE)) {
-			LOGGER.debug("varValue: " + currentIns.rightOperand.varValue.trim());
-
-			if (variableTable.containsKey(currentIns.leftOperand.varValue)) {
-				variableTable.put(currentIns.rightOperand.varValue, variableTable.get(currentIns.leftOperand.varValue));
-				LOGGER.debug("adding left operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + variableTable.get(currentIns.leftOperand.varValue));
-			} else {
-				variableTable.put(currentIns.rightOperand.varValue, insIndex);
-				LOGGER.debug("adding right operand varvalue: " + currentIns.rightOperand.varValue + " with value: " + (insIndex));
+	/**
+	 * This method propagates the value down the dominator tree using DFS.
+	 */
+	private void propagateValueDownDominatorTree(BasicBlock root, Result valueToReplace, Result valueToPropogate) {
+		for (BasicBlock dominatee : root.dominatees) {
+			for (Integer instructionNo : dominatee.getInstructions()) {
+				Instruction blockInstruction = copyPropInstructions.get(instructionNo);
+				updateInstruction(blockInstruction, valueToReplace, valueToPropogate);
 			}
-			String varToReplace = currentIns.rightOperand.varValue;
-			replaceVars(b, insIndex, varToReplace);
+			propagateValueDownDominatorTree(dominatee, valueToReplace, valueToPropogate);
 		}
-
-		LOGGER.debug("###Exit moveEncountered###");
 	}
 	
-	public void phiEncountered(BasicBlock b, int insIndex) {
-		LOGGER.debug("###Enter phiEncountered###");
-		List<Integer> blockInstructions = b.getInstructions();
-		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex-1));
-		
-		String varToReplace = null;
-		if (!variableTable.containsKey(currentIns.rightOperand.varValue) && currentIns.rightOperand.type.equals(ResultEnum.VARIABLE)) {
-			variableTable.put(currentIns.rightOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum, (currentIns.instNum));
-			varToReplace = currentIns.rightOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum;
-			LOGGER.debug("adding right operand varvalue: " + currentIns.rightOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum + " with value: " + currentIns.instNum );
-		} else if (!variableTable.containsKey(currentIns.leftOperand.varValue)  && currentIns.leftOperand.type.equals(ResultEnum.VARIABLE)) {
-			variableTable.put(currentIns.leftOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum, (currentIns.instNum));
-			varToReplace = currentIns.leftOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum;
-			LOGGER.debug("adding left operand varvalue: " + currentIns.leftOperand.getVarNameWithoutIndex() + "_" + currentIns.instNum + " with value: " + (currentIns.instNum));
+	/**
+	 * Since some nested blocks do not dominate the join blocks, we need to go through all the 
+	 * phi's and see if we can propagate the value to the phi for further optimization.  We can guarantee 
+	 * that the value being propagated will not appear after the phi.
+	 */
+	private void propagateValueThroughPhis(Result valueToReplace, Result valueToPropogate) {
+		for(int i = 0; i < phiInstructions.size(); i++) {
+			int phiInstructionNo = phiInstructions.get(i);
+			Instruction phiInstruction = copyPropInstructions.get(phiInstructionNo);
+			updateInstruction(phiInstruction, valueToReplace, valueToPropogate); 
 		}
-		
-		if (varToReplace != null) {
-			replaceVars(b, insIndex, varToReplace);
+	} 
+
+	/**
+	 * Simple utility method to help update the left or the right operand of an instruction when propagating.
+	 */
+	private void updateInstruction(Instruction instruction,  Result valueToReplace, Result valueToPropogate) {
+		Result previousOperand = null;
+		if(instruction.leftOperand.equals(valueToReplace)) {
+			previousOperand = Result.clone(instruction.leftOperand);
+			instruction.leftOperand = Result.clone(valueToPropogate);
+			LOGGER.debug("Updated left operand of instruction number {} from {} to {}", instruction.instNum, previousOperand, instruction.leftOperand);
 		}
-		
-		LOGGER.debug("###Exit phiEncountered###");
+
+		if(instruction.rightOperand.equals(valueToReplace)) {
+			previousOperand = Result.clone(instruction.rightOperand); 
+			instruction.rightOperand = Result.clone(valueToPropogate);
+			LOGGER.debug("Updated right operand of instruction number {} from {} to {}", instruction.instNum, previousOperand, instruction.rightOperand);
+		}	
 	}
-	
-	public void otherEncountered(BasicBlock b, int insIndex) throws OptimizationException {
-		// means an instruction other than a move was encountered. in this case just look to see if any operands within this operations
-		// should be replaced with instructions in the variableTable
-		LOGGER.debug("###Enter otherEncountered###");
-
-		List<Integer> blockInstructions = b.getInstructions();
-		Instruction currentIns = originalInstructions.get(blockInstructions.get(insIndex - 1));
-
-		if ((currentIns.leftOperand.type.equals(Result.ResultEnum.VARIABLE) && !(variableTable.containsKey(currentIns.leftOperand.varValue)) && !b.isFunctionBlock)) {
-			LOGGER.debug("OP: " + currentIns.op);
-			throw new OptimizationException("assigning unitilized vairable to another vairable." + currentIns.leftOperand.getVarNameWithoutIndex() + "->" + currentIns.rightOperand.varValue); 
-		}
-		if (currentIns.leftOperand.type.equals(ResultEnum.VARIABLE)) {
-			// check if its in the variableTable and then replace
-			if (variableTable.containsKey(currentIns.leftOperand.varValue)) {
-				String varValue = currentIns.leftOperand.varValue;
-				//currentIns.leftOperand.instrNum = variableTable.get(currentIns.leftOperand.varValue);
-				//currentIns.leftOperand.type = ResultEnum.INSTR;
-				currentIns.leftOperand =  createInstrResult(currentIns.leftOperand.varValue);
-				LOGGER.debug("replacing left operand varvalue: " + varValue + " with value: " + currentIns.leftOperand.instrNum);
-			}
-		}
-
-		if (currentIns.rightOperand.type.equals(ResultEnum.VARIABLE)) {
-			// check if its in the variableTable and then replace
-			if (variableTable.containsKey(currentIns.rightOperand.varValue)) {
-				/*currentIns.rightOperand.instrNum = variableTable.get(currentIns.rightOperand.varValue);
-				currentIns.rightOperand.type = ResultEnum.INSTR;*/
-				String varValue = currentIns.rightOperand.varValue;
-
-				currentIns.rightOperand =  createInstrResult(currentIns.rightOperand.varValue); 
-				LOGGER.debug("replacing right operand varvalue: " + varValue + " with value: " + currentIns.rightOperand.instrNum);
-			}
-		}
-		LOGGER.debug("###Exit otherEncountered###");
-
-	}
-
-	private Result createInstrResult(String variable) {
-		Result result = new Result(ResultEnum.INSTR);
-		result.instrNum = variableTable.get(variable);
-		return result; 
-	}
-
-	public void replaceVars(BasicBlock b, int insIndex, String varToReplace) {
-		// replace in a depth first search manner when
-
-		List<Integer> blockInstructions = b.getInstructions();
-
-		// for the remaining instructions inside the same basic block
-		for (int j = insIndex; j < blockInstructions.size(); j++) {
-
-			Instruction currentIns2 = originalInstructions.get(blockInstructions.get(j));
-
-			LOGGER.debug("instruction operator: " + currentIns2.op);
-			LOGGER.debug("instruction number: " + currentIns2.instNum);
-
-
-
-			if (currentIns2.leftOperand.varValue.equals(varToReplace)) {
-				currentIns2.leftOperand.type = ResultEnum.INSTR;
-				currentIns2.leftOperand.instrNum = variableTable.get(varToReplace);
-				LOGGER.debug("replacing left operand varvalue: " + currentIns2.leftOperand.varValue + " with value: " + currentIns2.leftOperand.instrNum);
-
-			}
-
-			if (currentIns2.rightOperand.varValue.equals(varToReplace)) {
-				currentIns2.rightOperand.type = ResultEnum.INSTR;
-				currentIns2.rightOperand.instrNum = variableTable.get(varToReplace);
-				LOGGER.debug("replacing right operand varvalue: " + currentIns2.rightOperand.varValue + " with value: " + currentIns2.rightOperand.instrNum);
-
-			}
-
-		}
-
-		for (BasicBlock d : b.dominatees) {
-			replaceVars(d, 0, varToReplace);
-		}
-
-	}
-
-	public void printTable() {
-		for(String s: variableTable.keySet()) {
-			System.out.println(s + ":" + variableTable.get(s));
-		}
-	}
-}
+} 

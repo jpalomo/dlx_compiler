@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import compiler.components.intermediate_rep.BasicBlock;
 import compiler.components.intermediate_rep.Result;
-import compiler.components.intermediate_rep.Result.ResultEnum;
+import static compiler.components.intermediate_rep.Result.ResultEnum.*;
 
 public class Instruction {
 	static Logger LOGGER = LoggerFactory.getLogger(Instruction.class);
@@ -22,8 +22,9 @@ public class Instruction {
 		CP_CONST, CP_INS, NEG, ADD, SUB, MUL, DIV, CMP, ADDA, LOAD, STORE, MOVE, PHI, END, BRA, BNE, BEQ, BLE, BLT, BGE, BGT, READ, WRITE, WLN, CALL, RETURN, POP, PUSH, SAVE_STATUS, MEM,
 	}
 
-	public static EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
-	public static EnumSet<OP> ARITHMETIC_INST = EnumSet.of( OP.ADD, OP.DIV, OP.MUL, OP.SUB);
+	//TODO Remove this set
+	//public static EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
+	public static EnumSet<OP> ARITHMETIC_INST = EnumSet.of(OP.ADD, OP.DIV, OP.MUL, OP.SUB);
 
 	public static List<String> predefined = new ArrayList<String>();
 	static{
@@ -33,9 +34,9 @@ public class Instruction {
 		predefined.add("writeNL");
 	}
 
-
 	/** Map holding the instruction number to the actual instruction */
 	public static Map<Integer, Instruction> programInstructions = new HashMap<Integer, Instruction>();
+	public static List<Integer> phiInstructionNumbers = new ArrayList<Integer>();
 
 	/** The program instruction counter */
 	public static Integer PC = 1;
@@ -121,24 +122,24 @@ public class Instruction {
 
 	public static Result emitAssignmentInstruction(Result r1, Result r2) throws ParsingException {
 
-		Result result = new Result(ResultEnum.INSTR);
+		Result result = new Result(INSTR);
 		Instruction assignInst;
 
 	    if(r1.arrayExprs.size() > 0) {
 	       assignInst = new Instruction(OP.STORE, Result.clone(r1), Result.clone(r2));  //store to an array
 	    }
 	    else {
-	    	if(r1.type.equals(ResultEnum.VARIABLE) && ((r2.type.equals(ResultEnum.CONSTANT) || r2.type.equals(ResultEnum.INSTR)))) {
+	    	if(r1.type.equals(VARIABLE) && ((r2.type.equals(CONSTANT) || r2.type.equals(INSTR)))) {
 	    		//we want the assignment with a vairable and constant to be of the form
 	    		//MOVE const/instr Variable
 	    		assignInst = new Instruction(OP.MOVE, Result.clone(r2), Result.clone(r1));
-	    		if(r1.type.equals(ResultEnum.VARIABLE) && r1.arrayExprs.size()  < 1) { //not an array
+	    		if(r1.type.equals(VARIABLE) && r1.arrayExprs.size()  < 1) { //not an array
 	    			generatePhi(Result.clone(r1));
 	    		}
 	    	}
 	    	else {
 	    		assignInst = new Instruction(OP.MOVE, Result.clone(r1), Result.clone(r2));
-	    		if(r2.type.equals(ResultEnum.VARIABLE) && r2.arrayExprs.size()  < 1) { //not an array
+	    		if(r2.type.equals(VARIABLE) && r2.arrayExprs.size()  < 1) { //not an array
 	    			generatePhi(Result.clone(r2));
 	    		}	    	
 	    	}
@@ -181,7 +182,7 @@ public class Instruction {
 			Variable var = parser.getCurrentVarName(varToInsert.getVarNameWithoutIndex());
 			phiInstruction.leftOperand = varToInsert;
 			
-			Result prev = new Result(ResultEnum.VARIABLE);
+			Result prev = new Result(VARIABLE);
 			prev.varValue = var.getPreviousSSAVar();
 			phiInstruction.rightOperand = prev;
 		}
@@ -189,7 +190,7 @@ public class Instruction {
 			Variable var = parser.getCurrentVarName(varToInsert.getVarNameWithoutIndex());
 			phiInstruction.rightOperand = varToInsert;
 			
-			Result prev = new Result(ResultEnum.VARIABLE);
+			Result prev = new Result(VARIABLE);
 			prev.varValue = var.getPreviousSSAVar();
 			phiInstruction.leftOperand = prev;
 		}
@@ -201,7 +202,7 @@ public class Instruction {
 		int newLocation = instructionNum + (PC - instructionNum);
 
 		Result newResult = new Result();
-		newResult.type = ResultEnum.INSTR;
+		newResult.type = INSTR;
 		newResult.instrNum = newLocation;
 
 		if (fixUpInst.op.equals(OP.BRA)) {
@@ -225,8 +226,8 @@ public class Instruction {
 
 	public static Result combineArithmetic(Result r1, String op, Result r2) {
 		Result result;
-		if (r1.type == ResultEnum.CONSTANT && r2.type == ResultEnum.CONSTANT) {
-			result = new Result(ResultEnum.CONSTANT);
+		if (r1.type == CONSTANT && r2.type == CONSTANT) {
+			result = new Result(CONSTANT);
 			if (op.equals("*")) {
 				result.constValue = r1.constValue * r2.constValue;
 			} else if (op.equals("/")) {
@@ -237,7 +238,7 @@ public class Instruction {
 				result.constValue = r1.constValue - r2.constValue;
 			}
 		} else {
-			result = new Result(ResultEnum.INSTR);
+			result = new Result(INSTR);
 
 			OP operator;
 			if (op.equals("*") || op.equals("/")) {
@@ -256,7 +257,7 @@ public class Instruction {
 
 	public static Result combineRelation(Result r1, String relationalOp, Result r2) {
 		
-		Result result = new Result(ResultEnum.CONDITION);
+		Result result = new Result(CONDITION);
 		result.conditionValue = relationalOp;
 
 		Instruction instruction = new Instruction(OP.CMP, Result.clone(r1), Result.clone(r2));
@@ -271,7 +272,7 @@ public class Instruction {
 	public static void createConditionalJumpFwd(Result x) {
 		OP invertedRelop = invertRelop(x.conditionValue);
 
-		Result r = new Result(ResultEnum.INSTR);
+		Result r = new Result(INSTR);
 		r.instrNum = PC - 1;  //do the branch comparison on the previous instruction
 
 		Instruction condJumpFwdInstr = new Instruction(invertedRelop, Result.clone(r), EMPTY_RESULT);
@@ -285,7 +286,7 @@ public class Instruction {
 
 		Instruction fwdJumpInst = new Instruction(OP.BRA, EMPTY_RESULT, EMPTY_RESULT);
 
-		Result r = new Result(ResultEnum.INSTR);
+		Result r = new Result(INSTR);
 		r.instrNum = x.fixUp;
 
 		fwdJumpInst.leftOperand = r;
@@ -303,7 +304,7 @@ public class Instruction {
 	       if(arg.arrayExprs.size() > 0) {
 	           Variable var = scopedSymbols.get(arg.varValue);
 	           loadArrayIndex(var, arg);
-		       Result instResult = new Result(ResultEnum.INSTR);
+		       Result instResult = new Result(INSTR);
 		       instResult.instrNum = PC -1;
 	           Instruction push = new Instruction(OP.PUSH, Result.clone(instResult), Result.EMPTY_RESULT);
 	           addInstruction(push);
@@ -331,9 +332,14 @@ public class Instruction {
 
 	public static void printInstructions() {
 		for(int i= 1; i <= programInstructions.entrySet().size(); i++) {
-			System.out.println(programInstructions.get(i).toString());
+			Instruction instruction = programInstructions.get(i);
+			if(instruction == null) {
+				continue; //we remove instructions at times, so this may be null
+			}
+			System.out.println(instruction);
 		}
 	}
+
 
 	private static OP invertRelop(String relop) {
 		if (relop.equals("<")) {
@@ -371,14 +377,25 @@ public class Instruction {
 		LOGGER.trace(instruction.toString());
 	}
 
+	/**
+	 * Adds the phi instruction to the basic block, global instruction map,
+	 * and the global phi instruction numbers list.
+	 * 
+	 * @param instruction
+	 */
 	public static void addPhiInstruction(Instruction instruction){
 		programInstructions.put(instruction.instNum, instruction);
+		phiInstructionNumbers.add(instruction.instNum);
+		
 		BasicBlock joinBlock = parser.joinBlockStack.peek();
 		joinBlock.addPhiInstruction(instruction.instNum);
+
 		propogatePhi(instruction);
+
 		instruction.blockNumber = joinBlock.blockNumber;
 		LOGGER.trace(instruction.toString());
 	}
+	
 	
 	private static void propogatePhi(Instruction phiInstruction) {
 
@@ -426,21 +443,21 @@ public class Instruction {
     public static Result loadArrayIndex(Variable arrayVar, Result exprResult) {
         List<Integer> arrayDims = arrayVar.getArrayDimSize();
 
-        Result framePoint = new Result(ResultEnum.VARIABLE);
+        Result framePoint = new Result(VARIABLE);
         framePoint.varValue = "FP";
        	
-        Result constant = new Result(ResultEnum.CONSTANT);
+        Result constant = new Result(CONSTANT);
         
        	List<Result> arrayIndicies = exprResult.arrayExprs;
         
        	if(arrayDims.size() > 1) {  //we have a two or more d array
         	//get the num of columns in the array declaration
-            Result numofColumn = new Result(ResultEnum.CONSTANT);
+            Result numofColumn = new Result(CONSTANT);
             numofColumn.constValue = arrayDims.get(1);
             
             // do all the muls first
             for (int i = arrayDims.size()-1; i >= 0; i--) {
-                Result c = new Result(ResultEnum.CONSTANT);
+                Result c = new Result(CONSTANT);
                 c.constValue = (int) Math.pow((double) 2, (double)(i+2));
             	
             	Result rowToRetrieve = arrayIndicies.get(arrayDims.size()-1-i);
@@ -450,9 +467,9 @@ public class Instruction {
             
             // do all adds for the muls
             for (int i = 0; i < arrayDims.size()-1; i++) { 
-            	Result c = new Result(ResultEnum.INSTR);
+            	Result c = new Result(INSTR);
             	c.instrNum = PC - arrayDims.size() + i;
-            	Result d = new Result(ResultEnum.INSTR);
+            	Result d = new Result(INSTR);
             	d.instrNum = PC - arrayDims.size() + i + 1;
             	Instruction addOfMuls = new Instruction(OP.ADD, Result.clone(c), Result.clone(d));
                 addInstruction(addOfMuls);
@@ -472,22 +489,22 @@ public class Instruction {
         
         Instruction adda = loadArray();
         
-        Result result = new Result(ResultEnum.INSTR);
+        Result result = new Result(INSTR);
         result.instrNum = adda.instNum;
         return result;
     } 
     
     private static Instruction loadArray() {
         //create the adda
-        Result inst1 = new Result(ResultEnum.INSTR);
+        Result inst1 = new Result(INSTR);
         inst1.instrNum = PC - 2;
-        Result inst2  = new Result(ResultEnum.INSTR);
+        Result inst2  = new Result(INSTR);
         inst2.instrNum = PC - 1;
         Instruction adda = new Instruction(OP.ADDA, Result.clone(inst1), Result.clone(inst2)); 
         addInstruction(adda);
 
         //create the load
-        Result inst3 = new Result(ResultEnum.INSTR);
+        Result inst3 = new Result(INSTR);
         inst3.instrNum = PC - 1;
         Instruction load = new Instruction(OP.LOAD, Result.clone(inst3), Result.EMPTY_RESULT);
         addInstruction(load);
@@ -501,7 +518,7 @@ public class Instruction {
     }
 
     public static void createBackJump(int backJumpInstruction) {
-        Result backJumpResult = new Result(ResultEnum.INSTR);
+        Result backJumpResult = new Result(INSTR);
         backJumpResult.instrNum = backJumpInstruction;
         Instruction backJump = new Instruction(OP.BRA, Result.clone(backJumpResult), Result.EMPTY_RESULT);
         addInstruction(backJump);

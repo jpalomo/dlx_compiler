@@ -21,16 +21,14 @@ import compiler.components.parser.Parser;
 //TODO make sure all fucntions have their variables initialized
 
 public class CommonSubexpressionElimination {
-	static Logger LOGGER = LoggerFactory
-			.getLogger(CommonSubexpressionElimination.class);
+	static Logger LOGGER = LoggerFactory.getLogger(CommonSubexpressionElimination.class);
 
-	public Map<Integer, Instruction> originalInstructions;
-	
+	public Map<Integer, Instruction> originalInstructions; 
 
 	public CommonSubexpressionElimination(Parser p, Map<Integer, Instruction> orig) {
 		originalInstructions = new HashMap<Integer, Instruction>(orig);
 		HashMap<Integer, Instruction> deletedToPass;
-		BasicBlock root = p.currentBlock;
+		BasicBlock root = p.root;
 		eliminateMoves(root);
 		deletedToPass = subexpressionElimination(root, new HashMap<OP, Set<Instruction>>(), new HashMap<Integer, Instruction>());
 		eliminateCPIns(root, deletedToPass);

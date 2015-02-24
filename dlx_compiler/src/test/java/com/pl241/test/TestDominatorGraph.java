@@ -28,7 +28,7 @@ public class TestDominatorGraph {
 		}
 
 		VCGWriter vcg = new VCGWriter(VCG_OUTPUT_DIR + fileName, Instruction.programInstructions);
-		vcg.emitDominatorGraph(parser.currentBlock);
+		vcg.emitDominatorGraph(parser.root);
 		vcg.close();
 	}
 
