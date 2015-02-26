@@ -12,7 +12,7 @@ import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
 
 public class TestControlFlowGraph {
-	private static String VCG_OUTPUT_DIR = "src/test/resources/vcg/";
+	private static String VCG_OUTPUT_DIR = "src/test/resources/cfg/";
 	private static final boolean RUN_XVCG = true;
 	private static final boolean PRINT_INSTRUCTIONS = true;
 

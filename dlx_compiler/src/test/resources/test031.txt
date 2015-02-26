@@ -8,6 +8,7 @@ var a, b, c, d;
 	
 	let b <- 1;
 	let c <- 5;
+	let d <- 0;
 	while b > c do
 		let d <- call InputNum( );
 		

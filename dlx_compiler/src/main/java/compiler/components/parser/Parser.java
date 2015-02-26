@@ -1,5 +1,11 @@
 package compiler.components.parser;
 
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.*;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.IF_JOIN;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.PROGRAM;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_FOLLOW;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_JOIN;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import compiler.components.intermediate_rep.BasicBlock;
+import compiler.components.intermediate_rep.BasicBlock.BlockType;
 import compiler.components.intermediate_rep.Result;
 import compiler.components.intermediate_rep.Result.ResultEnum;
 import compiler.components.lex.Scanner;
@@ -70,9 +77,9 @@ public class Parser {
 		// add the predefined functions to the symbol table 
 		functionSymbolTable.put("InputNum", new Function("read", new ArrayList<String>(), glblSymbolTable));
 		functionSymbolTable.put("OutputNum", new Function("write", new ArrayList<String>(), glblSymbolTable));
-		functionSymbolTable.put("OutputNewLine", new Function("wln", new ArrayList<String>(), glblSymbolTable));
+		functionSymbolTable.put("OutputNewLine", new Function("writeNL", new ArrayList<String>(), glblSymbolTable));
 
-		root = createBasicBlock();
+		root = createBasicBlock(PROGRAM);
 		Instruction.parser = this;
 	}
 
@@ -96,7 +103,7 @@ public class Parser {
 			}
 			else if (accept(Kind.BEGIN)) {
 				eatToken(); // eat the open brace
-				root = createBasicBlock();
+				root = createBasicBlock(PROGRAM);
 				blockStack.push(root);
 				statSequence();
 				expect(Kind.END);
@@ -154,7 +161,7 @@ public class Parser {
 		List<String> formalParams = formalParam();
 
 		isFunctionBlock = true;
-		BasicBlock functionBlock = createBasicBlock();  //create a new block for function code
+		BasicBlock functionBlock = createBasicBlock(FUNCTION);  //create a new block for function code
 		
 		Function function = new Function(funcName, formalParams, glblSymbolTable, functionBlock);
 		blockStack.push(functionBlock); //push the block onto the stack so that code gets generated in this block
@@ -301,7 +308,6 @@ public class Parser {
 		expect(Kind.CALL);
 
 		String funcIdent = ident();
-		
 
 		List<Result> funcParams = new ArrayList<Result>();
 		if (accept(Kind.OPN_PAREN)) {
@@ -340,7 +346,7 @@ public class Parser {
 
 		Map<String, Variable> symbolsCopy = copySymbols(); 
 
-		BasicBlock joinBlock = createBasicBlock();
+		BasicBlock joinBlock = createBasicBlock(IF_JOIN);
 		joinBlockStack.push(joinBlock);
 
 		BasicBlock mainDominator = blockStack.peek();
@@ -354,7 +360,7 @@ public class Parser {
 
 		expect(Kind.THEN); 
 
-		BasicBlock ifBodyBlock = createBasicBlock();
+		BasicBlock ifBodyBlock = createBasicBlock(IF_BODY);
 		addControlFlow(mainDominator, ifBodyBlock);  //current block -> ifbodyblock
 		addDominatee(mainDominator, ifBodyBlock);
 
@@ -372,7 +378,7 @@ public class Parser {
 			Instruction.fixUp(relation.fixUp);
 			blockStack.pop(); //pop the ifbody off the stack, were done with it
 
-			BasicBlock elseBodyBlock = createBasicBlock();
+			BasicBlock elseBodyBlock = createBasicBlock(ELSE_BODY);
 			addControlFlow(blockStack.peek(), elseBodyBlock); //current block -> elsebodyblock 
 
 			addDominatee(loopHeaderStack.peek(), elseBodyBlock);
@@ -396,7 +402,6 @@ public class Parser {
 		LOGGER.debug("If Statement Join Block Numbr: " + joinBlockStack.firstElement().blockNumber);
 		blockStack.push(joinBlockStack.pop());
 
-		//dominator 
 		addDominatee(mainDominator, joinBlock);
 
 		loopHeaderStack.pop();
@@ -430,7 +435,7 @@ public class Parser {
 		 * the following instructions should be generated in the current block
 		 * that has instructions in it.
 		 */
-		BasicBlock incomingBlock = createBasicBlock();
+		BasicBlock incomingBlock = createBasicBlock(WHILE_JOIN);
 
 		if(stackDepth.size() < 1) {
 			inLoop = true;
@@ -449,7 +454,7 @@ public class Parser {
 		expect(Kind.DO);
 
 		comingFromLeft = false;
-		BasicBlock whileBodyBlock = createBasicBlock();  
+		BasicBlock whileBodyBlock = createBasicBlock(PROGRAM);  
 		blockStack.push(whileBodyBlock);
 		statSequence();
 		joinBlockStack.push(whileBodyBlock);
@@ -473,7 +478,7 @@ public class Parser {
 		}
 
 		/*Create the new block for instructions after the while loop */
-		BasicBlock followBlock = createBasicBlock();
+		BasicBlock followBlock = createBasicBlock(WHILE_FOLLOW);
 		addControlFlow(incomingBlock, followBlock);
 		blockStack.push(followBlock);
 
@@ -665,6 +670,7 @@ public class Parser {
 	private void addControlFlow(BasicBlock from, BasicBlock to) {
 		LOGGER.trace("Control flows from:" + from.blockNumber + " to " + to.blockNumber);
 		from.addControlFlow(to);
+		to.addParent(from);
 	}
 
 	private void addDominatee(BasicBlock from, BasicBlock to) {
@@ -764,12 +770,9 @@ public class Parser {
 	    throw new ParsingException("variable: " + ident + " was not found to be declared.");
 	}
 
-	public BasicBlock createBasicBlock() {
-		BasicBlock bb = new BasicBlock(); 
+	public BasicBlock createBasicBlock(BlockType type) {
+		BasicBlock bb = new BasicBlock(type); 
 		blockMap.put(bb.blockNumber, bb);
-		if(isFunctionBlock) {
-			bb.isFunctionBlock = true;
-		}
 		return bb;
 	}
 

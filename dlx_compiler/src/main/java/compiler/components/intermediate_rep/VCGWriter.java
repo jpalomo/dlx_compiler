@@ -1,5 +1,6 @@
 package compiler.components.intermediate_rep;
 
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.FUNCTION;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -63,7 +64,7 @@ public class VCGWriter {
 					+ "\"");
 			writer.println("targetname: " + "\"" + controlFlow.blockNumber
 					+ "\"");
-			if((!bb.isFunctionBlock) && (controlFlow.isFunctionBlock)) {
+			if((bb.blockType != FUNCTION) && (controlFlow.blockType.equals(FUNCTION))) {
 				writer.println("color: blue");
 			} 
 			else {

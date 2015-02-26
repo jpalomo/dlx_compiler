@@ -23,7 +23,7 @@ public class Instruction {
 	}
 
 	//TODO Remove this set
-	//public static EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
+	public static EnumSet<OP> BRANCH_INST = EnumSet.of( OP.BRA, OP.BNE, OP.BEQ, OP.BLE, OP.BLT, OP.BGE, OP.BGT);
 	public static EnumSet<OP> ARITHMETIC_INST = EnumSet.of(OP.ADD, OP.DIV, OP.MUL, OP.SUB);
 
 	public static List<String> predefined = new ArrayList<String>();
@@ -299,7 +299,6 @@ public class Instruction {
 
 	    //Go through each on of the function arguments and if it is an array, load it, 
 	    //otherwise push it on the stack as a variable or constant
-	    Result loadResult;  
 	    for(Result arg: funcArguments) {
 	       if(arg.arrayExprs.size() > 0) {
 	           Variable var = scopedSymbols.get(arg.varValue);

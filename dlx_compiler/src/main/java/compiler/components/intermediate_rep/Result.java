@@ -89,16 +89,15 @@ public class Result {
 				if(this.type.equals(ResultEnum.EMPTY)) {
 					return true;
 				}
-
 				if(type.equals(ResultEnum.INSTR)) {
-					return this.instrNum == r.instrNum;
+					return this.instrNum.intValue() == r.instrNum.intValue();
 				}
 				else if(type.equals(ResultEnum.VARIABLE)) {
 					return this.varValue.equals(r.varValue);
 				}
 				else if(type.equals(ResultEnum.CONSTANT)) {
 					return this.constValue.intValue() == r.constValue.intValue();
-				 }
+				}
 			}
 		}
 		return false;

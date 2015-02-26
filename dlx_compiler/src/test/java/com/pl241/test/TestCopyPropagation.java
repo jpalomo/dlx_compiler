@@ -7,16 +7,18 @@ import org.junit.Before;
 import org.junit.Test;
 
 import compiler.components.intermediate_rep.VCGWriter;
-import compiler.components.optimization.CopyPropagation;
+import compiler.components.optimization.Optimizer;
 import compiler.components.parser.Function;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
 
 public class TestCopyPropagation {
-	private static String VCG_OUTPUT_DIR = "src/test/resources/opvcg/";
+	private static String VCG_OUTPUT_DIR = "src/test/resources/cp/";
 	private static final boolean RUN_XVCG = true;
 	private static final boolean PRINT_INSTRUCTIONS = false;
+	private static final boolean PRINT_DOM = true;
+	private static final boolean PRINT_CFG = true;
 
 	@Before
 	public void setup() {
@@ -24,36 +26,49 @@ public class TestCopyPropagation {
 		Instruction.PC = 1;
 	}
 
-	public void printDom(Parser parser, String fileName){
+	public void print(Parser parser, String fileName) throws IOException{
 		if(PRINT_INSTRUCTIONS){
 			parser.printInstructions();
 		}
 
-		VCGWriter vcg = new VCGWriter(VCG_OUTPUT_DIR + fileName, Instruction.programInstructions);
-		vcg.emitDominatorGraph(parser.root);
-		for(Function f : parser.functionList) {
-			if(f.hasBlocks) { 
-				vcg.emitDominatorGraph(f.beginBlockForFunction);
+		if(PRINT_DOM) {
+			String fullFileName = VCG_OUTPUT_DIR + "dom_" + fileName;
+			VCGWriter vcg = new VCGWriter(fullFileName , Instruction.programInstructions);
+			vcg.emitDominatorGraph(parser.root);
+			for(Function f : parser.functionList) {
+				if(f.hasBlocks) { 
+					vcg.emitDominatorGraph(f.beginBlockForFunction);
+				}
 			}
+			vcg.close();
+			
+			runXVCG(fullFileName);
 		}
-		vcg.close();
+
+		if(PRINT_CFG) {
+			String fullFileName = VCG_OUTPUT_DIR + "cfg_" + fileName;
+			VCGWriter vcg = new VCGWriter(fullFileName, Instruction.programInstructions);
+			vcg.emitControlFlowGraph(parser.root);
+			vcg.close();
+
+			runXVCG(fullFileName);
+		}
 	}
 
-	public void runXVCG(String fileName) throws IOException{
+	private void runXVCG(String fullFileName) throws IOException {
 		if(RUN_XVCG){
-			Runtime.getRuntime().exec("/usr/local/bin/xvcg " + VCG_OUTPUT_DIR + fileName); 
+			Runtime.getRuntime().exec("/usr/local/bin/xvcg " + fullFileName); 
 		}
 	}
-	
-	@Test //passing with cfg
+
+	@Test 
 	public void test001() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test001.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test001.txt.vcg");
-		runXVCG("test001.txt.vcg"); 
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());
+		optimizer.optimize(true, false);
+		print(parser, "test001.txt.vcg");
 	}
 
 	@Test  
@@ -61,10 +76,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test002.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test002.txt.vcg");
-		runXVCG("test002.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test002.txt.vcg");
 	}
 
 	@Test   
@@ -72,10 +86,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test003.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test003.txt.vcg");
-		runXVCG("test003.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test003.txt.vcg");
 	}
 	
 	@Test  
@@ -83,78 +96,69 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test004.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test004.txt.vcg");
-		runXVCG("test004.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test004.txt.vcg");
 	}
 	
-	@Test //passing with cfg
+	@Test 
 	public void test005() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test005.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test005.txt.vcg");
-		runXVCG("test005.txt.vcg");
-
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test005.txt.vcg");
 	}
 	
-	@Test  //passing with cfg
+	@Test  
 	public void test006() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test006.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test006.txt.vcg");
-		runXVCG("test006.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test006.txt.vcg");
 	}
 
-	@Test //passing with cfg 
+	@Test  
 	public void test007() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test007.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test007.txt.vcg");
-		runXVCG("test007.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test007.txt.vcg");
 	}
 
-	@Test  //TODO simple while test not working
+	@Test  
 	public void test008() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test008.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test008.txt.vcg");
-		runXVCG("test008.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test008.txt.vcg");
 	}
 
-	@Test //TODO ifs are generating empty blocks 
+	@Test 
 	public void test009() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test009.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test009.txt.vcg");
-		runXVCG("test009.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test009.txt.vcg");
 	}
 
-	@Test  //passing with cfg
+	@Test  
 	public void test010() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test010.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test010.txt.vcg");
-		runXVCG("test010.txt.vcg");
-
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test010.txt.vcg");
 	}
 
 	@Test   
@@ -162,21 +166,19 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test011.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test011.txt.vcg");
-		runXVCG("test011.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test011.txt.vcg");
 	}
 
-	@Test //passing with cfg 
+	@Test  
 	public void test012() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test012.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test012.txt.vcg");
-		runXVCG("test012.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test012.txt.vcg");
 	}
 
 	@Test 
@@ -184,10 +186,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test013.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test013.txt.vcg");
-		runXVCG("test013.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test013.txt.vcg");
 	}
 
 	@Test 
@@ -195,10 +196,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test014.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test014.txt.vcg");
-		runXVCG("test014.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test014.txt.vcg");
 	}
 
 	@Test 
@@ -206,10 +206,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test015.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test015.txt.vcg");
-		runXVCG("test015.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test015.txt.vcg");
 	}
 
 	@Test
@@ -217,20 +216,18 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test016.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test016.txt.vcg");
-		runXVCG("test016.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test016.txt.vcg");
 	}
 
 	@Test  
 	public void test017() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test017.txt"); 
 		parser.parse();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test017.txt.vcg");
-		runXVCG("test017.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test017.txt.vcg");
 	}
 
 	@Test  
@@ -238,10 +235,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test018.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test018.txt.vcg");
-		runXVCG("test018.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test018.txt.vcg");
 	}
 
 	@Test 
@@ -249,10 +245,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test019.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test019.txt.vcg");
-		runXVCG("test019.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test019.txt.vcg");
 	}
 
 	@Test
@@ -260,10 +255,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test020.txt");
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test020.txt.vcg");
-		runXVCG("test020.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test020.txt.vcg");
 	}
 
 	@Test  
@@ -271,10 +265,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test021.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test021.txt.vcg");
-		runXVCG("test021.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test021.txt.vcg");
 	}
 
 	@Test  
@@ -282,10 +275,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test022.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		;
-		printDom(parser, "test022.txt.vcg");
-		runXVCG("test022.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test022.txt.vcg");
 	}
 
 	@Test  
@@ -293,10 +285,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test023.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test023.txt.vcg");
-		runXVCG("test023.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test023.txt.vcg");
 	}
 	
 	@Test   
@@ -304,10 +295,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test024.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test024.txt.vcg");
-		runXVCG("test024.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test024.txt.vcg");
 	}
 	
 	@Test  
@@ -315,10 +305,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test025.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test025.txt.vcg");
-		runXVCG("test025.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test025.txt.vcg");
 	}
 	
 	@Test   
@@ -326,10 +315,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test026.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test026.txt.vcg");
-		runXVCG("test026.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test026.txt.vcg");
 	}
 	
 	@Test //TODO Null pointer exception being thrown in the if statement  
@@ -337,10 +325,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test027.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-
-		printDom(parser, "test027.txt.vcg");
-		runXVCG("test027.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test027.txt.vcg");
 	}
 	
 	@Test   
@@ -348,10 +335,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test028.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		parser.printInstructions(); 
-		printDom(parser, "test028.txt.vcg");
-		runXVCG("test028.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test028.txt.vcg");
 	}
 	
 	@Test  
@@ -359,10 +345,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test029.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test029.txt.vcg");
-		runXVCG("test029.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test029.txt.vcg");
 	}
 	
 	@Test  
@@ -370,10 +355,9 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test030.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test030.txt.vcg");
-		runXVCG("test030.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test030.txt.vcg");
 	}
 	
 	@Test
@@ -381,20 +365,17 @@ public class TestCopyPropagation {
 		Parser parser = new Parser("src/test/resources/test031.txt"); 
 		parser.parse();
 		parser.printInstructions();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "test031.txt.vcg");
-		runXVCG("test031.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "test031.txt.vcg");
 	}
 	
 	@Test  
 	public void arrayIfElse() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/unit_tests/array_if_else.txt"); 
 		parser.parse();
-		CopyPropagation propagator = new CopyPropagation(parser, parser.getPhiInstructionNumbers(),parser.getProgramInstructions());
-		
-		printDom(parser, "array_if_else.txt.vcg");
-		runXVCG("array_if_else.txt.vcg");
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, false);
+		print(parser, "array_if_else.txt.vcg");
 	}
-
 }
