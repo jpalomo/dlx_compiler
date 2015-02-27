@@ -1,12 +1,18 @@
-package compiler.components.optimization;
+package compiler.components.register;
 
-import static compiler.components.intermediate_rep.BasicBlock.BlockType.*;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.ELSE_BODY;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.FUNCTION;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.IF_BODY;
 import static compiler.components.intermediate_rep.BasicBlock.BlockType.IF_JOIN;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.PROGRAM;
 import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_FOLLOW;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_JOIN;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -16,6 +22,9 @@ import org.slf4j.LoggerFactory;
 
 import compiler.components.intermediate_rep.BasicBlock;
 import compiler.components.parser.Instruction;
+import compiler.components.parser.Instruction.OP;
+import compiler.components.register.InterferenceGraph.INode;
+import compiler.components.register.InterferenceGraph.SuperNode;
 
 public class RegisterAllocator {
 	static Logger LOGGER = LoggerFactory.getLogger(RegisterAllocator.class);
@@ -24,22 +33,81 @@ public class RegisterAllocator {
 	private Queue<BasicBlock> blocksToProcess = new LinkedList<BasicBlock>();
 
 	Map<Integer, Instruction> programInstructions;
+	List<Integer> phiInstructionNumbers;
+
 	BasicBlock leafBlock;
 	Set<Integer> processedBlocks;
+	public InterferenceGraph IGraph;
 
-	public RegisterAllocator(Map<Integer, Instruction> programInstructions) {
+	public RegisterAllocator(Map<Integer, Instruction> programInstructions, List<Integer> phiInstructionNumbers) {
 		processedBlocks = new HashSet<Integer>();
 		this.programInstructions = programInstructions;
+		this.phiInstructionNumbers = phiInstructionNumbers;
+		this.IGraph = new InterferenceGraph(frequencies);
 	}
 
 	public void buildGraphAndAllocate(BasicBlock rootBlock) {
+		leafBlock = rootBlock;
 		depthFirstToLeaf(rootBlock);
 		blocksToProcess.add(leafBlock);
 		while(!blocksToProcess.isEmpty()) {
 			calculateLivenessBottomUp(blocksToProcess.remove());
 		}
+		IGraph.intepretCosts(frequencies);
+		buildClusters();
 	}
 	
+	private void buildClusters() {
+		for(int phiInstructionNum : phiInstructionNumbers) {
+			Instruction phiInstruction = programInstructions.get(phiInstructionNum);
+
+			List<INode> clusterNodes = new ArrayList<INode>();
+			
+			Instruction inst1 = programInstructions.get(phiInstruction.leftOperand.instrNum);
+			Instruction inst2 = programInstructions.get(phiInstruction.rightOperand.instrNum);
+
+			if(! inst1.op.equals(OP.CP_CONST)) {
+				INode node = IGraph.getNode(inst1.instNum);
+				if(node != null) {
+					//check interference with phi
+					boolean interfere = false;
+					for(int i : node.neighbors) {
+						if (i == phiInstructionNum) {
+							interfere = true;;
+							break;
+						}
+					}
+
+					if(!interfere) {
+						clusterNodes.add(node);
+					} 
+				}
+			}
+
+			if(! inst2.op.equals(OP.CP_CONST)) {
+				INode node = IGraph.getNode(inst2.instNum);
+				if(node != null) {
+					//check interference with phi
+					boolean interfere = false;
+					for(int i : node.neighbors) {
+						if (i == phiInstructionNum) {
+							interfere = true;;
+							break;
+						}
+					}
+
+					if(!interfere) {
+						clusterNodes.add(node);
+					} 
+				}
+			}
+
+			//if clusternodes.size() > 0, create a new superNode
+
+			
+		}
+	}
+
 	public void depthFirstToLeaf(BasicBlock root) {
 		for(BasicBlock child : root.controlFlow) {
 			if(child.blockType.equals(FUNCTION)) {
@@ -51,10 +119,8 @@ public class RegisterAllocator {
 				leafBlock = child;
 				break;
 			}
-
 			depthFirstToLeaf(child);
-		}
-
+		} 
 	}
 
 	private void calculateLivenessBottomUp(BasicBlock currentBlock) {
@@ -81,7 +147,7 @@ public class RegisterAllocator {
 		if(currentBlock.blockType.equals(IF_BODY)) {
 			if (currentBlock.controlFlow.size() <= 1) {
 				calculateLive3(currentBlock, true); 
-				currentBlock.calculateLiveSet(programInstructions);
+				currentBlock.calculateLiveSet(programInstructions, IGraph);
 			}
 			else {
 				//previously computed the block as an if body, but it was actually nested and should be a
@@ -92,7 +158,7 @@ public class RegisterAllocator {
 		else if(currentBlock.blockType.equals(ELSE_BODY)) {
 			if( currentBlock.controlFlow.size() <= 1) {
 				calculateLive3(currentBlock, false); 
-				currentBlock.calculateLiveSet(programInstructions);
+				currentBlock.calculateLiveSet(programInstructions, IGraph);
 			}
 			else {
 				//previously computed the block as an if body, but it was actually nested and should be a
@@ -102,7 +168,7 @@ public class RegisterAllocator {
 		}
 		else if(currentBlock.blockType.equals(IF_JOIN)) {
 			initializeLiveSet(currentBlock);
-			currentBlock.calculateLiveSet(programInstructions);
+			currentBlock.calculateLiveSet(programInstructions, IGraph);
 		}
 		else if(currentBlock.blockType.equals(WHILE_FOLLOW)) {
 
@@ -113,7 +179,7 @@ public class RegisterAllocator {
 
 		if(currentBlock.blockType.equals(PROGRAM)) {
 			initializeLiveSet(currentBlock);
-			currentBlock.calculateLiveSet(programInstructions);
+			currentBlock.calculateLiveSet(programInstructions, IGraph);
 		}
 
 			
@@ -138,6 +204,7 @@ public class RegisterAllocator {
 			live1.addAll(joinBlock.getRightPhis(programInstructions));
 		}
 		currentBlock.liveSet = live1;
+		IGraph.addEdges(currentBlock.liveSet);
 	}
 	
 	public static void updateFrequency(int value) {

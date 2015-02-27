@@ -4,6 +4,7 @@ import static compiler.components.intermediate_rep.Result.ResultEnum.CONSTANT;
 import static compiler.components.intermediate_rep.Result.ResultEnum.INSTR;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -15,9 +16,11 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Joiner;
 
 import compiler.components.intermediate_rep.Result.ResultEnum;
-import compiler.components.optimization.RegisterAllocator;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Instruction.OP;
+import compiler.components.register.InterferenceGraph;
+import compiler.components.register.InterferenceGraph.INode;
+import compiler.components.register.RegisterAllocator;
 
 /**
  * This class represents a basic block in our parser.
@@ -109,7 +112,7 @@ public class BasicBlock {
 		}
 	}
 
-	public void calculateLiveSet(Map<Integer, Instruction> programInstructions) {
+	public void calculateLiveSet(Map<Integer, Instruction> programInstructions, InterferenceGraph IGraph) {
 		//start from the bottom of the instruction list
 		Joiner joiner = Joiner.on(",").skipNulls();
 		joiner.join(liveSet);
@@ -146,8 +149,10 @@ public class BasicBlock {
 					RegisterAllocator.updateFrequency(instruction.rightOperand.getVariableIndex());
 				}
 			}
-		
+			
 			updateLiveSet(instruction.instNum);
+			
+			IGraph.addEdges(liveSet);
 		} 
 		
 		joiner.join(liveSet);

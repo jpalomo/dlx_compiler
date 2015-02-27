@@ -6,13 +6,15 @@ import java.util.HashMap;
 import org.junit.Before;
 import org.junit.Test;
 
+import compiler.components.intermediate_rep.InterferenceGraphWriter;
 import compiler.components.intermediate_rep.VCGWriter;
 import compiler.components.optimization.Optimizer;
-import compiler.components.optimization.RegisterAllocator;
 import compiler.components.parser.Function;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
+import compiler.components.register.InterferenceGraph;
+import compiler.components.register.RegisterAllocator;
 
 public class TestRegisterAllocator {
 	private static String VCG_OUTPUT_DIR = "src/test/resources/reg/";
@@ -56,10 +58,21 @@ public class TestRegisterAllocator {
 			runXVCG(fullFileName);
 		}
 	}
+
+	private void printInterferenceGraph(String fileName, InterferenceGraph ig) throws IOException {
+		if(PRINT_CFG) {
+			String fullFileName = VCG_OUTPUT_DIR + "int_" + fileName;
+			InterferenceGraphWriter vcg = new InterferenceGraphWriter(fullFileName, Instruction.programInstructions);
+			vcg.emitInterferenceGraph(ig);
+			vcg.close();
+
+			runXVCG(fullFileName);
+		}
+	}
 	
 	public void runXVCG(String fileName) throws IOException{
 		if(RUN_XVCG){
-			Runtime.getRuntime().exec("/usr/local/bin/xvcg " + VCG_OUTPUT_DIR + fileName); 
+			Runtime.getRuntime().exec("/usr/local/bin/xvcg " + fileName); 
 		}
 	}
 	
@@ -69,7 +82,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test001.txt.vcg");
 		runXVCG("test001.txt.vcg"); 
@@ -81,7 +94,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test002.txt.vcg");
 		runXVCG("test002.txt.vcg"); 
@@ -93,7 +106,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root); 
 		print(parser, "test003.txt.vcg");
 		runXVCG("test003.txt.vcg"); 
@@ -105,7 +118,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root); 
 		print(parser, "test004.txt.vcg");
 		runXVCG("test004.txt.vcg"); 
@@ -117,7 +130,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test005.txt.vcg");
 		runXVCG("test005.txt.vcg"); 
@@ -130,7 +143,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test006.txt.vcg");
 		runXVCG("test006.txt.vcg"); 
@@ -142,7 +155,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test007.txt.vcg");
 		runXVCG("test007.txt.vcg"); 
@@ -154,7 +167,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test008.txt.vcg");
 		runXVCG("test008.txt.vcg"); 
@@ -166,7 +179,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test009.txt.vcg");
 		runXVCG("test009.txt.vcg"); 
@@ -178,7 +191,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test010.txt.vcg");
 		runXVCG("test010.txt.vcg");;
@@ -191,7 +204,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test011.txt.vcg");
 		runXVCG("test011.txt.vcg"); 
@@ -203,10 +216,11 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
-		print(parser, "test012.txt.vcg");
-		runXVCG("test012.txt.vcg"); 
+		//print(parser, "test012.txt.vcg");
+		printInterferenceGraph("test012.txt.vcg", regAlloc.IGraph);
+		//runXVCG("test012.txt.vcg"); 
 	}
 
 	@Test 
@@ -215,7 +229,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test013.txt.vcg");
 		runXVCG("test013.txt.vcg");
@@ -227,7 +241,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test014.txt.vcg");
 		runXVCG("test014.txt.vcg");
@@ -237,7 +251,7 @@ public class TestRegisterAllocator {
 	public void test015() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/test015.txt"); 
 		parser.parse();
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test015.txt.vcg");
 		runXVCG("test015.txt.vcg");
@@ -249,7 +263,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test016.txt.vcg");
 		runXVCG("test016.txt.vcg");
@@ -261,7 +275,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test017.txt.vcg");
 		runXVCG("test017.txt.vcg");
@@ -273,7 +287,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test018.txt.vcg");
 		runXVCG("test018.txt.vcg");
@@ -285,7 +299,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test019.txt.vcg");
 		runXVCG("test019.txt.vcg"); 
@@ -297,7 +311,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test020.txt.vcg");
 		runXVCG("test020.txt.vcg");
@@ -309,7 +323,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test021.txt.vcg");
 		runXVCG("test021.txt.vcg"); 
@@ -321,7 +335,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test022.txt.vcg");
 		runXVCG("test022.txt.vcg"); 
@@ -333,7 +347,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test023.txt.vcg");
 		runXVCG("test023.txt.vcg"); 
@@ -345,7 +359,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test024.txt.vcg");
 		runXVCG("test024.txt.vcg");
@@ -357,7 +371,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test025.txt.vcg");
 		runXVCG("test025.txt.vcg"); 
@@ -369,7 +383,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test026.txt.vcg");
 		runXVCG("test026.txt.vcg");
@@ -381,7 +395,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test027.txt.vcg");
 		runXVCG("test027.txt.vcg"); 
@@ -393,9 +407,10 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(parser.getProgramInstructions());
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test028.txt.vcg");
+		printInterferenceGraph("test028.txt.vcg", regAlloc.IGraph);
 		runXVCG("test028.txt.vcg");
 	}
 	
@@ -405,7 +420,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test029.txt.vcg");
 		runXVCG("test029.txt.vcg");
@@ -417,7 +432,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test030.txt.vcg");
 		runXVCG("test030.txt.vcg");
@@ -429,7 +444,7 @@ public class TestRegisterAllocator {
 		parser.parse();
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "test031.txt.vcg");
 		runXVCG("test031.txt.vcg");
@@ -443,7 +458,7 @@ public class TestRegisterAllocator {
 	public void testIfElse() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_else.txt"); 
 		parser.parse();
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root); 
 		print(parser, "if_else.txt.vcg");
 		runXVCG("if_else.txt.vcg");
@@ -453,7 +468,7 @@ public class TestRegisterAllocator {
 	public void testIfIf() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_if.txt"); 
 		parser.parse();
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root); 
 		print(parser, "if_if.txt.vcg");
 		runXVCG("if_if.txt.vcg");
@@ -463,7 +478,7 @@ public class TestRegisterAllocator {
 	public void testIfElseIfElseIfElse() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_else_if_else_else.txt"); 
 		parser.parse();
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root); 
 		print(parser, "if_else_if_else_else.txt.vcg");
 		runXVCG("if_else_if_else_else.txt.vcg");
@@ -473,7 +488,7 @@ public class TestRegisterAllocator {
 	public void testNestedWhile() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/unit_tests/nested_while.txt"); 
 		parser.parse();
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "nested_while.txt.vcg");
 		runXVCG("nested_while.txt.vcg");;
@@ -484,7 +499,7 @@ public class TestRegisterAllocator {
 	public void arrayIfElse() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/unit_tests/array_if_else.txt"); 
 		parser.parse();
-		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "array_if_else.txt.vcg");
 		runXVCG("array_if_else.txt.vcg");

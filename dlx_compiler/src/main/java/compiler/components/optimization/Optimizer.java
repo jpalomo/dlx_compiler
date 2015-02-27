@@ -2,7 +2,7 @@ package compiler.components.optimization;
 
 import static compiler.components.parser.Instruction.BRANCH_INST;
 import static compiler.components.parser.Instruction.OP.*;
-import static compiler.components.intermediate_rep.Result.ResultEnum.CONSTANT;
+import static compiler.components.intermediate_rep.Result.ResultEnum.*;
 import static compiler.components.intermediate_rep.Result.ResultEnum.INSTR;
 import static compiler.components.intermediate_rep.Result.EMPTY_RESULT; 
 import static compiler.components.parser.Instruction.OP.CP_CONST;
@@ -38,7 +38,6 @@ public class Optimizer {
 		this.optimizedInstructions = new HashMap<Integer, Instruction>(orig);
 		this.phiInstructions = new ArrayList<Integer>(phiInstructionNumbers);
 		this.parser = parser;
-		//update the global instructions to reflect the copy propagation performed
 	}
 
 	public void optimize(boolean performCopyProp, boolean performCommonSubExprElim) throws OptimizationException {
@@ -50,6 +49,7 @@ public class Optimizer {
 		if(performCommonSubExprElim) {
 			commonSubexpressionElimination(parser.root);
 		}
+
 		
 		//perform CP on all function blocks
 		for(Function f : parser.functionList) {
@@ -64,8 +64,28 @@ public class Optimizer {
 			}
 		}
 		
+		//instructions may reference PHIS as variables (e.g. c_10), we will update all instructions to 
+		//reference the instruction number (10)
+		updateAllInstructionsThatReferencePhis();
 		Instruction.programInstructions = this.optimizedInstructions;
 	}
+
+	private void updateAllInstructionsThatReferencePhis() {
+		for(Instruction instruction : optimizedInstructions.values()) {
+			if(instruction.leftOperand.type.equals(VARIABLE)) {
+				Result instrResult = new Result(INSTR);
+				instrResult.instrNum = instruction.leftOperand.getVariableIndex();
+				instruction.leftOperand = instrResult;
+			}
+
+			if(instruction.rightOperand.type.equals(VARIABLE)) {
+				Result instrResult = new Result(INSTR);
+				instrResult.instrNum = instruction.rightOperand.getVariableIndex();
+				instruction.rightOperand = instrResult;
+			}
+		}
+	}
+
 
 	/**
 	 * This method performs a DFS on the dominator tree looking for values to propagate down the tree.
@@ -174,6 +194,9 @@ public class Optimizer {
 		for(int i = 0; i < phiInstructions.size(); i++) {
 			int phiInstructionNo = phiInstructions.get(i);
 			Instruction phiInstruction = optimizedInstructions.get(phiInstructionNo);
+			if(phiInstruction == null) { //removed this instruction
+				continue;
+			}
 			updateInstructionValues(phiInstruction, valueToReplace, valueToPropagate); 
 		}
 	} 
@@ -183,6 +206,23 @@ public class Optimizer {
 	 */
 	private void updateInstructionValues(Instruction instruction,  Result valueToReplace, Result valueToPropagate) {
 		Result previousOperand = null;
+
+		Instruction checkInstruction = optimizedInstructions.get(valueToPropagate.instrNum);
+/*		if(checkInstruction.op.equals(CP_CONST) && instruction.op.equals(PHI)){
+
+			if(instruction.leftOperand.equals(valueToReplace)) {
+				previousOperand = Result.clone(instruction.leftOperand);
+				instruction.leftOperand = Result.clone(checkInstruction.leftOperand);
+				LOGGER.debug("Updated left operand of phi instruction number {} from {} to {}", instruction.instNum, previousOperand, instruction.leftOperand);
+			}
+
+			if(instruction.rightOperand.equals(valueToReplace)) {
+				previousOperand = Result.clone(instruction.rightOperand); 
+				instruction.rightOperand = Result.clone(checkInstruction.leftOperand);
+				LOGGER.debug("Updated right operand of phi instruction number {} from {} to {}", instruction.instNum, previousOperand, instruction.rightOperand);
+			}	
+			return;
+		}*/
 		if(instruction.leftOperand.equals(valueToReplace)) {
 			previousOperand = Result.clone(instruction.leftOperand);
 			instruction.leftOperand = Result.clone(valueToPropagate);
@@ -205,6 +245,7 @@ public class Optimizer {
 			.addAll(BRANCH_INST)
 			.add(CMP)
 			.add(SAVE_STATUS)
+			.add(PHI)
 			.build();
 
 	private void commonSubexpressionElimination(BasicBlock startBlock) {

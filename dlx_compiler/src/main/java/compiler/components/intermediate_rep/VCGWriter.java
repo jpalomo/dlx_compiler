@@ -95,13 +95,18 @@ public class VCGWriter {
 			return;
 		}
 
-		for (BasicBlock controlFlow : bb.dominatees) {
+		for (BasicBlock dominatee : bb.dominatees) {
 			writer.println();
 			writer.println("edge: { sourcename: " + "\"" + bb.blockNumber
 					+ "\"");
-			writer.println("targetname: " + "\"" + controlFlow.blockNumber
+			writer.println("targetname: " + "\"" + dominatee.blockNumber
 					+ "\"");
-			writer.println("color: red");
+			if(bb.blockType == FUNCTION){ 
+				writer.println("color: blue");
+			} 
+			else{
+				writer.println("color: red");
+			}
 			writer.println("}");
 		}
 
