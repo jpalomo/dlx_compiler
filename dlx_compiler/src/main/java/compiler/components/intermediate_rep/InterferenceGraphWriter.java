@@ -3,6 +3,7 @@ package compiler.components.intermediate_rep;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -39,8 +40,7 @@ public class InterferenceGraphWriter {
 
 	public void emitInterferenceGraph(InterferenceGraph ig) {
 		
-		Set<Integer> addedSources = new HashSet<Integer>();
-		Set<Integer> addedDest = new HashSet<Integer>();
+		Map<Integer, Set<Integer>> addedSources = new HashMap<Integer, Set<Integer>>();
 		for(int nodeNum : ig.getGraph().keySet()) {
 			
 			INode node = ig.getGraph().get(nodeNum);
@@ -48,14 +48,17 @@ public class InterferenceGraphWriter {
 			writer.println("node: {");
 			writer.println("title: \"" + node.nodeNumber + "\"");
 			writer.print("label: \"" + node.nodeNumber + "\"");
+			writer.print("width: 100");
+			writer.print("height: 50");
+			writer.println("shape: ellipse");
 
 			emitExitNode();
 			// print the information for the control flow
 			for (int neighbor : node.neighbors) {
 				INode neighborNode = ig.getGraph().get(neighbor);
-				/*if(added(addedSources, addedDest, neighbor)) {
+				if(added(addedSources, nodeNum, neighbor)) {
 					continue;
-				}*/
+				}
 
 				//addedEdges.add(nodeNum + neighbor);
 				writer.println();
@@ -64,13 +67,36 @@ public class InterferenceGraphWriter {
 				writer.println("targetname: " + "\"" + neighbor
 					+ "\"");
 				writer.println("color: blue");
+				writer.println("arrowstyle: none"); 
 				writer.println("}");
 			}
 		}
 	}
 
 
-	private boolean added(Set<Integer> addedSources, Set<Integer> addedDest, int source, int dest) {
+	private boolean added(Map<Integer, Set<Integer>> addedSources, int source, int dest) {
+		if(addedSources.containsKey(source)) {
+			if(addedSources.get(source).contains(dest)) {
+				return true;
+			}
+		}
+
+		if(addedSources.containsKey(dest)) {
+			if(addedSources.get(dest).contains(source)) {
+				return true;
+			}
+		}
+
+		Set<Integer> edges;
+		if(addedSources.containsKey(source)) {
+			edges = addedSources.get(source);
+		} 
+		else {
+			edges = new HashSet<Integer>();
+		}
+
+		edges.add(dest);
+		addedSources.put(source, edges);
 		return false;
 	}
 
