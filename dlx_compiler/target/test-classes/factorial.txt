@@ -1,4 +1,4 @@
-#Simple parsing test
+//Simple parsing test
 main
 var input;
 

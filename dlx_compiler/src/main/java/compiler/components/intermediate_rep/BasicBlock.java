@@ -19,7 +19,7 @@ import compiler.components.intermediate_rep.Result.ResultEnum;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Instruction.OP;
 import compiler.components.register.InterferenceGraph;
-import compiler.components.register.InterferenceGraph.INode;
+import compiler.components.register.INode;
 import compiler.components.register.RegisterAllocator;
 
 /**

@@ -1,21 +1,134 @@
- INFO [main] (Instruction.java:248) - 1: MOVE    arg   a1
- INFO [main] (Instruction.java:248) - 2: MOVE    arg   a2
- INFO [main] (Instruction.java:248) - 3: MOVE    arg   a3
- INFO [main] (Instruction.java:248) - 4: MOVE    arg   a4
- INFO [main] (Instruction.java:248) - 5: MOVE    arg   a5
- INFO [main] (Instruction.java:248) - 6: MOVE   size   #5
- INFO [main] (Instruction.java:248) - 7: MOVE      i   #2
- INFO [main] (Instruction.java:248) - 8: MOVE   temp  arg
- INFO [main] (Instruction.java:248) - 9: CMP       i size
- INFO [main] (Instruction.java:248) - 10: CMP     arg temp
- INFO [main] (Instruction.java:248) - 11: BLE    (10)     
- INFO [main] (Instruction.java:248) - 12: MOVE   temp  arg
- INFO [main] (Instruction.java:248) - 13: ADD       i   #1
- INFO [main] (Instruction.java:248) - 14: MOVE      i   13
- INFO [main] (Instruction.java:248) - 16: MOVE   input  #22
- INFO [main] (Instruction.java:248) - 17: MOVE   input  #61
- INFO [main] (Instruction.java:248) - 18: MOVE   input  #17
- INFO [main] (Instruction.java:248) - 19: MOVE   input  #34
- INFO [main] (Instruction.java:248) - 20: MOVE   input  #11
- INFO [main] (Instruction.java:248) - 21: SAVE_STATUS          
- INFO [main] (Instruction.java:248) - 22: CALL    max     
+DEBUG [main] (Optimizer.java:125) - CP - Found assignment of constant to variable, update instruction 1 and propoate an instruction
+DEBUG [main] (Optimizer.java:229) - Updated left operand of instruction number 3 from a_1 to (1)
+DEBUG [main] (Optimizer.java:235) - Updated right operand of instruction number 5 from a_1 to (1)
+DEBUG [main] (Optimizer.java:235) - Updated right operand of instruction number 7 from a_1 to (1)
+DEBUG [main] (Optimizer.java:125) - CP - Found assignment of constant to variable, update instruction 2 and propoate an instruction
+DEBUG [main] (Optimizer.java:235) - Updated right operand of instruction number 3 from b_2 to (2)
+DEBUG [main] (Optimizer.java:235) - Updated right operand of instruction number 9 from b_2 to (2)
+DEBUG [main] (Optimizer.java:229) - Updated left operand of instruction number 11 from b_2 to (2)
+DEBUG [main] (Optimizer.java:129) - CP - Removing instruction 6: MOVE    (5)  a_6 because it was propagated.
+DEBUG [main] (Optimizer.java:151) - Removing instruction number: 6 from block number: 3
+DEBUG [main] (Optimizer.java:229) - Updated left operand of instruction number 7 from a_6 to (5)
+DEBUG [main] (Optimizer.java:129) - CP - Removing instruction 10: MOVE    (9) b_10 because it was propagated.
+DEBUG [main] (Optimizer.java:151) - Removing instruction number: 10 from block number: 4
+DEBUG [main] (Optimizer.java:235) - Updated right operand of instruction number 11 from b_10 to (9)
+DEBUG [main] (Optimizer.java:129) - CP - Removing instruction 15: MOVE   (14) a_15 because it was propagated.
+DEBUG [main] (Optimizer.java:151) - Removing instruction number: 15 from block number: 6
+DEBUG [main] (Optimizer.java:229) - Updated left operand of instruction number 16 from a_15 to (14)
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 1: CP_CONST   #1      expression down block: 1.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 2: CP_CONST   #2      expression down block: 1.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 5: ADD      #1  (1) expression down block: 3.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 9: ADD      #1  (2) expression down block: 4.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 14: SUB      #1  a_7 expression down block: 6.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 17: PUSH   a_16      expression down block: 5.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 18: CALL   write      expression down block: 5.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 19: PUSH   b_11      expression down block: 5.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 20: CALL   write      expression down block: 5.
+DEBUG [main] (Optimizer.java:272) - CSE - Propagating instruction 21: END              expression down block: 5.
+DEBUG [main] (RegisterAllocator.java:212) - Found leaf of control flow graph: 5
+DEBUG [main] (RegisterAllocator.java:212) - Found leaf of control flow graph: 5
+DEBUG [main] (RegisterAllocator.java:212) - Found leaf of control flow graph: 5
+DEBUG [main] (RegisterAllocator.java:212) - Found leaf of control flow graph: 5
+DEBUG [main] (RegisterAllocator.java:227) - Added block number: 6 to queue to be processed
+DEBUG [main] (RegisterAllocator.java:227) - Added block number: 2 to queue to be processed
+DEBUG [main] (BasicBlock.java:119) - Liveset for block number: 5 before processing: 
+DEBUG [main] (BasicBlock.java:159) - Liveset for block number: 5 after processing: 
+DEBUG [main] (InterferenceGraph.java:45) - Added node 14 to graph
+DEBUG [main] (BasicBlock.java:119) - Liveset for block number: 6 before processing: 14
+DEBUG [main] (RegisterAllocator.java:308) - Put new entry in frequencies table for: 7 
+DEBUG [main] (InterferenceGraph.java:45) - Added node 7 to graph
+DEBUG [main] (BasicBlock.java:159) - Liveset for block number: 6 after processing: 7
+DEBUG [main] (RegisterAllocator.java:227) - Added block number: 3 to queue to be processed
+DEBUG [main] (RegisterAllocator.java:227) - Added block number: 4 to queue to be processed
+DEBUG [main] (BasicBlock.java:119) - Liveset for block number: 2 before processing: 7
+DEBUG [main] (RegisterAllocator.java:308) - Put new entry in frequencies table for: 12 
+DEBUG [main] (RegisterAllocator.java:308) - Put new entry in frequencies table for: 17 
+DEBUG [main] (InterferenceGraph.java:45) - Added node 12 to graph
+DEBUG [main] (InterferenceGraph.java:87) - Added edge from 7 to 12
+DEBUG [main] (InterferenceGraph.java:91) - Added edge from 12 to 7
+DEBUG [main] (RegisterAllocator.java:313) - Updated frequency for key: 7  to: 2
+DEBUG [main] (RegisterAllocator.java:308) - Put new entry in frequencies table for: 11 
+DEBUG [main] (InterferenceGraph.java:45) - Added node 11 to graph
+DEBUG [main] (InterferenceGraph.java:87) - Added edge from 7 to 11
+DEBUG [main] (InterferenceGraph.java:91) - Added edge from 11 to 7
+DEBUG [main] (BasicBlock.java:159) - Liveset for block number: 2 after processing: 7,11
+DEBUG [main] (RegisterAllocator.java:227) - Added block number: 1 to queue to be processed
+DEBUG [main] (InterferenceGraph.java:45) - Added node 2 to graph
+DEBUG [main] (InterferenceGraph.java:45) - Added node 5 to graph
+DEBUG [main] (InterferenceGraph.java:87) - Added edge from 2 to 5
+DEBUG [main] (InterferenceGraph.java:91) - Added edge from 5 to 2
+DEBUG [main] (BasicBlock.java:119) - Liveset for block number: 3 before processing: 2,5
+DEBUG [main] (RegisterAllocator.java:308) - Put new entry in frequencies table for: 1 
+DEBUG [main] (InterferenceGraph.java:45) - Added node 1 to graph
+DEBUG [main] (InterferenceGraph.java:87) - Added edge from 1 to 2
+DEBUG [main] (InterferenceGraph.java:91) - Added edge from 2 to 1
+DEBUG [main] (BasicBlock.java:159) - Liveset for block number: 3 after processing: 1,2
+DEBUG [main] (InterferenceGraph.java:45) - Added node 9 to graph
+DEBUG [main] (InterferenceGraph.java:87) - Added edge from 1 to 9
+DEBUG [main] (InterferenceGraph.java:91) - Added edge from 9 to 1
+DEBUG [main] (BasicBlock.java:119) - Liveset for block number: 4 before processing: 1,9
+DEBUG [main] (RegisterAllocator.java:308) - Put new entry in frequencies table for: 2 
+DEBUG [main] (BasicBlock.java:159) - Liveset for block number: 4 after processing: 1,2
+DEBUG [main] (BasicBlock.java:119) - Liveset for block number: 1 before processing: 1,2
+DEBUG [main] (RegisterAllocator.java:308) - Put new entry in frequencies table for: 3 
+DEBUG [main] (RegisterAllocator.java:308) - Put new entry in frequencies table for: 9 
+DEBUG [main] (InterferenceGraph.java:45) - Added node 3 to graph
+DEBUG [main] (InterferenceGraph.java:87) - Added edge from 1 to 3
+DEBUG [main] (InterferenceGraph.java:91) - Added edge from 3 to 1
+DEBUG [main] (InterferenceGraph.java:87) - Added edge from 2 to 3
+DEBUG [main] (InterferenceGraph.java:91) - Added edge from 3 to 2
+DEBUG [main] (RegisterAllocator.java:313) - Updated frequency for key: 1  to: 2
+DEBUG [main] (RegisterAllocator.java:313) - Updated frequency for key: 2  to: 2
+DEBUG [main] (BasicBlock.java:159) - Liveset for block number: 1 after processing: 
+DEBUG [main] (InterferenceGraph.java:122) - Updating neighbor 1 from 5 to -1.
+DEBUG [main] (InterferenceGraph.java:125) - Updating neighbor 5 from 5 to -1.
+DEBUG [main] (InterferenceGraph.java:107) - Removing 5 from graph.
+DEBUG [main] (InterferenceGraph.java:122) - Updating neighbor -1 from 7 to -1.
+DEBUG [main] (InterferenceGraph.java:125) - Updating neighbor 7 from 7 to -1.
+DEBUG [main] (InterferenceGraph.java:122) - Updating neighbor -1 from 7 to -1.
+DEBUG [main] (InterferenceGraph.java:125) - Updating neighbor 7 from 7 to -1.
+DEBUG [main] (InterferenceGraph.java:45) - Added node -1 to graph
+DEBUG [main] (InterferenceGraph.java:107) - Removing 7 from graph.
+DEBUG [main] (InterferenceGraph.java:122) - Updating neighbor 3 from 9 to -2.
+DEBUG [main] (InterferenceGraph.java:125) - Updating neighbor 9 from 9 to -2.
+DEBUG [main] (InterferenceGraph.java:107) - Removing 9 from graph.
+DEBUG [main] (InterferenceGraph.java:45) - Added node -2 to graph
+DEBUG [main] (InterferenceGraph.java:107) - Removing 11 from graph.
+DEBUG [main] (InterferenceGraph.java:107) - Removing 14 from graph.
+DEBUG [main] (InterferenceGraph.java:122) - Updating neighbor -3 from -1 to -3.
+DEBUG [main] (InterferenceGraph.java:125) - Updating neighbor -1 from -1 to -3.
+DEBUG [main] (InterferenceGraph.java:122) - Updating neighbor -3 from -1 to -3.
+DEBUG [main] (InterferenceGraph.java:125) - Updating neighbor -1 from -1 to -3.
+DEBUG [main] (InterferenceGraph.java:107) - Removing -1 from graph.
+DEBUG [main] (InterferenceGraph.java:45) - Added node -3 to graph
+DEBUG [main] (InterferenceGraph.java:107) - Removing 16 from graph.
+DEBUG [main] (InterferenceGraph.java:154) - Node 1 has less than 100 edges with 3 number of edges.
+DEBUG [main] (InterferenceGraph.java:101) - Removed 1 from 2.
+DEBUG [main] (InterferenceGraph.java:103) - Removed 2 from 1.
+DEBUG [main] (InterferenceGraph.java:101) - Removed 1 from 3.
+DEBUG [main] (InterferenceGraph.java:103) - Removed 3 from 1.
+DEBUG [main] (InterferenceGraph.java:107) - Removing 1 from graph.
+DEBUG [main] (InterferenceGraph.java:154) - Node 2 has less than 100 edges with 2 number of edges.
+DEBUG [main] (InterferenceGraph.java:101) - Removed 2 from 3.
+DEBUG [main] (InterferenceGraph.java:103) - Removed 3 from 2.
+DEBUG [main] (InterferenceGraph.java:107) - Removing 2 from graph.
+DEBUG [main] (InterferenceGraph.java:154) - Node 3 has less than 100 edges with 0 number of edges.
+DEBUG [main] (InterferenceGraph.java:107) - Removing 3 from graph.
+DEBUG [main] (InterferenceGraph.java:154) - Node 12 has less than 100 edges with 1 number of edges.
+DEBUG [main] (InterferenceGraph.java:107) - Removing 12 from graph.
+DEBUG [main] (InterferenceGraph.java:154) - Node -3 has less than 100 edges with 0 number of edges.
+DEBUG [main] (InterferenceGraph.java:107) - Removing -3 from graph.
+DEBUG [main] (InterferenceGraph.java:154) - Node -2 has less than 100 edges with 0 number of edges.
+DEBUG [main] (InterferenceGraph.java:107) - Removing -2 from graph.
+DEBUG [main] (InterferenceGraph.java:52) - Added node -2 back to graph
+DEBUG [main] (RegisterAllocator.java:199) - Assigning register 1 to node -2
+DEBUG [main] (InterferenceGraph.java:52) - Added node -3 back to graph
+DEBUG [main] (RegisterAllocator.java:199) - Assigning register 1 to node -3
+DEBUG [main] (InterferenceGraph.java:52) - Added node 12 back to graph
+DEBUG [main] (RegisterAllocator.java:199) - Assigning register 2 to node 12
+DEBUG [main] (InterferenceGraph.java:52) - Added node 3 back to graph
+DEBUG [main] (RegisterAllocator.java:199) - Assigning register 1 to node 3
+DEBUG [main] (InterferenceGraph.java:52) - Added node 2 back to graph
+DEBUG [main] (RegisterAllocator.java:199) - Assigning register 2 to node 2
+DEBUG [main] (InterferenceGraph.java:52) - Added node 1 back to graph
+DEBUG [main] (RegisterAllocator.java:199) - Assigning register 2 to node 1

@@ -6,6 +6,9 @@ var a, b, c, d;
 	call OutputNum( a );
 	call OutputNewLine( );
 	
+	let b <- 1;
+	let c <- 5;
+	let d <- 0;
 	while b > c do
 		let d <- call InputNum( );
 		

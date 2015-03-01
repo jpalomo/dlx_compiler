@@ -11,7 +11,7 @@ function foo( );
 };
 function bar( );
 {
-call OutputNum(35);
+	call OutputNum(35);
 	let b <- 3;
 	let c <- 4;
 	return b + c

@@ -157,8 +157,9 @@ public class TestRegisterAllocator {
 		optimizer.optimize(true, true);
 		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers);
 		regAlloc.buildGraphAndAllocate(parser.root);
-		print(parser, "test007.txt.vcg");
-		runXVCG("test007.txt.vcg"); 
+		//print(parser, "test012.txt.vcg");
+		printInterferenceGraph("test007.txt.vcg", regAlloc.IGraph);
+		//runXVCG("test012.txt.vcg"); 
 	}
 
 	@Test  //TODO simple while test not working
