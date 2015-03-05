@@ -129,6 +129,8 @@ public class InterferenceGraph {
 	}
 	
 	public INode removeFromGraphTemp(INode node) {
+		
+        LOGGER.debug("Removing {} from graph.", node.nodeNumber);
 		return graph.remove(Integer.valueOf(node.nodeNumber));
 	}
 	
