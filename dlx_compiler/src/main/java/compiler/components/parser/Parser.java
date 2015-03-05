@@ -454,7 +454,7 @@ public class Parser {
 		expect(Kind.DO);
 
 		comingFromLeft = false;
-		BasicBlock whileBodyBlock = createBasicBlock(PROGRAM);  
+		BasicBlock whileBodyBlock = createBasicBlock(WHILE_BODY);  
 		blockStack.push(whileBodyBlock);
 		statSequence();
 		joinBlockStack.push(whileBodyBlock);

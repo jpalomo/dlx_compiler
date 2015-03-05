@@ -46,11 +46,23 @@ public class InterferenceGraph {
 		}
 	}
 	
-	public void addNodeBackToGraph(INode node) {
+	// override above function for adding a node that is not new (i.e. adding a cluster)
+	public void addNodeToGraph(INode node) {
 		if(!graph.containsKey(node.nodeNumber)) {
 			graph.put(node.nodeNumber, node);
-			LOGGER.debug("Added node {} back to graph", node.nodeNumber);
+			LOGGER.debug("Added node {} to graph", node.nodeNumber);
 		}
+	}
+	
+	public void addNodeBackToGraph(INode node, List<Integer> neighbors) {
+		if(!graph.containsKey(node.nodeNumber)) {
+			graph.put(node.nodeNumber, node);
+		}
+		for(int neighbor : neighbors) {
+			addEdge(node.nodeNumber, neighbor);
+			addEdge(neighbor, node.nodeNumber);
+		}
+		LOGGER.debug("Added node {} and its edges back to graph", node.nodeNumber);
 	}
 	
 	public void addEdges(Set<Integer> liveSet) {
@@ -80,15 +92,23 @@ public class InterferenceGraph {
 		}
 		
 		fromNode = graph.get(from);
+		if(fromNode == null) {
+			fromNode = new INode(from);
+			graph.put(from, fromNode);
+		}
 		toNode = graph.get(to);
+		if(toNode == null) {
+			toNode = new INode(to);
+			graph.put(to, toNode);
+		}
 		
 		if(!fromNode.neighbors.contains(to)) {
 			fromNode.neighbors.add(to);
-		LOGGER.debug("Added edge from {} to {}", from, to);
+			LOGGER.debug("Added edge from {} to {}", from, to);
 		}
 		if(!toNode.neighbors.contains(from)) {
 			toNode.neighbors.add(from);
-		LOGGER.debug("Added edge from {} to {}", to, from);
+			LOGGER.debug("Added edge from {} to {}", to, from);
 		}
 	}
 
@@ -107,7 +127,11 @@ public class InterferenceGraph {
         LOGGER.debug("Removing {} from graph.", node.nodeNumber);
 		return graph.remove(Integer.valueOf(node.nodeNumber));
 	}
-
+	
+	public INode removeFromGraphTemp(INode node) {
+		return graph.remove(Integer.valueOf(node.nodeNumber));
+	}
+	
 	public void updateNeighbors(INode node, SuperNode cluster) {
 		
 		List<Integer> tempList = new ArrayList<Integer>(node.neighbors);
@@ -149,14 +173,25 @@ public class InterferenceGraph {
 	}
 
 	public INode findNodeWithEdgesLess(int numOfEdges) {
+		int maxEdges = -1;
+		INode returnNode = null;
 		for(INode node : graph.values()) {
 			if(node.neighbors.size() <= numOfEdges) {
-				LOGGER.debug("Node {} has less than {} edges with {} number of edges.", node.nodeNumber, numOfEdges, node.neighbors.size()); 
-				return node;
+				if (node.neighbors.size() > maxEdges) {
+					maxEdges = node.neighbors.size();
+					returnNode = node;
+				}
 			}
 		}
-
-		return findNodeBasedOnCost();
+			
+		if (returnNode == null) {
+			LOGGER.debug("Could not find a node with less than {} number of edges. Finding node by cost.", numOfEdges);
+			return findNodeBasedOnCost();
+		}
+		else {
+			LOGGER.debug("Node {} has less than {} edges with {} number of edges.", returnNode.nodeNumber, numOfEdges, returnNode.neighbors.size()); 
+			return returnNode;
+		}
 	}
 	
 	public void intepretCosts(Map<Integer, Integer> frequencies) {

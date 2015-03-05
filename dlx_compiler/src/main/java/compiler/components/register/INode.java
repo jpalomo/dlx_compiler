@@ -10,11 +10,13 @@ public class INode {
 	public int nodeNumber; //instruction number
 	public int registerNumber;
 	public static int clusterId = -1;
+	public List<INode> internalNodes;
 
 	public INode(int nodeNumber) {
 		this.nodeNumber= nodeNumber;
 		neighbors = new LinkedList<Integer>();
-		this.registerNumber = -1;					// CHANGE TO SOMETHING ELSE RATHER THAN -1?
+		this.registerNumber = -1;
+		internalNodes = new LinkedList<INode>();
 	}
 } 
 

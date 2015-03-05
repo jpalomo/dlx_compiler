@@ -7,6 +7,7 @@ import static compiler.components.intermediate_rep.BasicBlock.BlockType.IF_JOIN;
 import static compiler.components.intermediate_rep.BasicBlock.BlockType.PROGRAM;
 import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_FOLLOW;
 import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_JOIN;
+import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_BODY;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +37,8 @@ public class RegisterAllocator {
 	BasicBlock leafBlock;
 	Set<Integer> processedBlocks;
 	public InterferenceGraph IGraph;
+	
+	Set<BasicBlock> visited = new HashSet<BasicBlock>();
 
 	public RegisterAllocator(Map<Integer, Instruction> programInstructions, List<Integer> phiInstructionNumbers) {
 		processedBlocks = new HashSet<Integer>();
@@ -54,6 +57,7 @@ public class RegisterAllocator {
 		IGraph.intepretCosts(frequencies);
 		buildClusters();
 		colorGraph(IGraph);
+		removePhis(IGraph);
 	}
 	
 	private void buildClusters() {
@@ -115,7 +119,7 @@ public class RegisterAllocator {
 					boolean interfere = false;
 					for(int i : node.neighbors) {
 						if (i == phiInstructionNum) {
-							interfere = true;;
+							interfere = true;
 							break;
 						}
 					}
@@ -141,11 +145,8 @@ public class RegisterAllocator {
 				}
 				
 				// remove the phiInstruction number node and replace with the cluster
+				IGraph.removeFromGraph(clusterNodes.get(0));
 				IGraph.updateNeighbors(clusterNodes.get(0), cluster);
-				
-				
-				// add cluster to the interference graph
-				IGraph.addNodeToGraph(cluster.nodeNumber);
 				
 				// add all the neighbors/edges to the supernode class of all the clusternodes within it
 				for (INode i : clusterNodes) {
@@ -155,31 +156,52 @@ public class RegisterAllocator {
 							cluster.neighbors.add(IGraph.nodesToClusters.get(j).nodeNumber);
 						} 
 						else {
-							if(!cluster.neighbors.contains(j)) {
+							if(!cluster.neighbors.contains(j) && j != cluster.nodeNumber) {
 								cluster.neighbors.add(j);
 							}
 						}
 					}
 				}
 				
-				IGraph.removeFromGraph(clusterNodes.get(0));
+				// add cluster to the interference graph
+				IGraph.addNodeToGraph(cluster);
 			}
 		}
 	}
 	
 	public void colorGraph(InterferenceGraph ig) {
 		// choose arbitrary node with fewer than N colors, else get lowest cost node (findeNodeWithEdgesLess does both searches for us already)
-		int N = 100;
+		int N = 8;
 		INode x = ig.findNodeWithEdgesLess(N);
+		// check if x is a cluster and update its neighbors
+		if(x.nodeNumber < 0) {
+			// then its a cluster and need to add the neighbors of each node within it to the temp list 
+			// which is used to rebuilt the graph again later
+			for(SuperNode s : ig.nodesToClusters.values()) {
+				if(s.nodeNumber == x.nodeNumber) {
+					x.internalNodes = s.internalNodes;
+					break;
+				}
+			}
+			for(INode n : x.internalNodes) {
+				for(int i : n.neighbors) {
+					if(i != x.nodeNumber && !x.neighbors.contains(i)) {
+						x.neighbors.add(i);
+					}
+				}
+			}
+		}
+		List<Integer> temp = new ArrayList<Integer>(x.neighbors);
 		
 		// remove x from the graph
-		ig.removeFromGraph(x);
+		ig.removeFromGraphTemp(x);
+		
 		// if graph is not empty, recursively call
 		if(!ig.isGraphEmpty()) {
 			colorGraph(ig);
 		}
-		// add x back to g
-		ig.addNodeBackToGraph(x);
+		// add x back to g, and re-add its edges as well
+		ig.addNodeToGraph(x);
 		
 		// choose a color for x that is different from its neighbors
 		assignColor(x);
@@ -188,11 +210,13 @@ public class RegisterAllocator {
 	public void assignColor(INode x) {
 		// finds and assigns a color/register to x based on the registers assigned to its neighbors
 		int color = 1;	// analogous to register number
+		List<Integer> neighborRegs = new ArrayList<Integer>();
 		for(int i = 0; i < x.neighbors.size(); i++) {
 			INode temp = IGraph.getNode(x.neighbors.get(i));
-			if (color == temp.registerNumber) {
+			if (temp != null && color == temp.registerNumber && !neighborRegs.contains(color)) {
+				neighborRegs.add(color);
 				color++;
-				i = 0;
+				i = -1;
 			}
 		}
 		
@@ -203,6 +227,7 @@ public class RegisterAllocator {
 	}
 
 	public void depthFirstToLeaf(BasicBlock root) {
+		visited.add(root);
 		for(BasicBlock child : root.controlFlow) {
 			if(child.blockType.equals(FUNCTION)) {
 				continue;
@@ -213,10 +238,44 @@ public class RegisterAllocator {
 				leafBlock = child;
 				break;
 			}
-			depthFirstToLeaf(child);
+			if (!visited.contains(child)) {
+				depthFirstToLeaf(child);
+				visited.add(child);
+			}
+			
 		} 
 	}
 
+	private void removePhis(InterferenceGraph IGraph) {
+		
+		for(int p : phiInstructionNumbers) {
+			
+			Instruction phiIns = programInstructions.get(p);
+			
+			Instruction inst1 = programInstructions.get(phiIns.leftOperand.instrNum);
+			Instruction inst2 = programInstructions.get(phiIns.rightOperand.instrNum);
+			
+			// phi   : (1)    (2)		
+			// node1 : node2 node3
+			
+			INode node1 = IGraph.getNode(phiIns.instNum);
+			
+			if(!inst1.op.equals(OP.CP_CONST)) {
+				INode node2 = IGraph.getNode(inst1.instNum);
+			}
+			
+			if(!inst2.op.equals(OP.CP_CONST)) {
+				INode node3 = IGraph.getNode(inst2.instNum);
+			}
+			
+			// CONTINUE HERE
+			// check the register value assigned to each node
+			
+		}
+		
+		
+	}
+	
 	private void calculateLivenessBottomUp(BasicBlock currentBlock) {
 		//add all the parents to the queue
 		for(BasicBlock parent : currentBlock.parents) {
@@ -229,7 +288,7 @@ public class RegisterAllocator {
 		}
 
 		for(BasicBlock child : currentBlock.controlFlow) {
-			if(child.liveSet == null) {
+			if(child.liveSet == null && !blocksToProcess.contains(child)) {
 				//All children need to have their live sets calculated, go to the back
 				//of the queue and wait for them to be processed
 				LOGGER.debug("Got to block number {}, but children had not been processed.  Adding to queue.", currentBlock.blockNumber); 
@@ -265,9 +324,50 @@ public class RegisterAllocator {
 			currentBlock.calculateLiveSet(programInstructions, IGraph);
 		}
 		else if(currentBlock.blockType.equals(WHILE_FOLLOW)) {
+			// while follow blocks don't do much and should be treated as regular program blocks, in both nested and non-nested whiles
+			initializeLiveSet(currentBlock);
+			currentBlock.calculateLiveSet(programInstructions, IGraph);
 
 		}
 		else if(currentBlock.blockType.equals(WHILE_JOIN)) {
+			// all comments consistent with the example he gave in class about how to calculate live ranges for whiles
+			
+			// identify while body block
+			BasicBlock whileBody = getWhileBodyBlock(currentBlock);
+			// identify while follow block
+			BasicBlock whileFollow = getWhileFollowBlock(currentBlock);
+			
+			// live0 + live1 (live1 is empty here)
+			currentBlock.liveSet = new HashSet<Integer>();
+			// it is possible that the whileFollow liveset is empty, just an if to account for that
+			if(whileFollow.liveSet != null) {
+				currentBlock.liveSet.addAll(whileFollow.liveSet);
+			}
+			
+			// go up lines in whilejoin block and update live ranges to get live2
+			currentBlock.calculateLiveSet(programInstructions, IGraph);
+			
+			// go up lines in whleBody to get live1'
+			whileBody.liveSet = new HashSet<Integer>();
+			
+			// calculate live1'
+			// live2 + right side of phis ({y})
+			initializeLiveSet(whileBody);
+			whileBody.liveSet.addAll(currentBlock.liveSet);
+			whileBody.liveSet.addAll(currentBlock.getRightPhis(programInstructions));
+			whileBody.calculateLiveSet(programInstructions, IGraph);
+			
+			// live1' + live0
+			currentBlock.liveSet.clear();
+			currentBlock.liveSet.addAll(whileBody.liveSet);
+			currentBlock.liveSet.addAll(whileFollow.liveSet);
+			
+			// calculate live2'
+			currentBlock.calculateLiveSet(programInstructions, IGraph);
+			
+			// live2' - phiInstructionNumbers + leftSideOfPhi
+			currentBlock.liveSet.removeAll(currentBlock.getPhiInstructionNumbers());
+			currentBlock.liveSet.addAll(currentBlock.getLeftPhis(programInstructions));
 			
 		}
 
@@ -284,6 +384,30 @@ public class RegisterAllocator {
 		for(BasicBlock child : currentBlock.controlFlow) {
 			currentBlock.liveSet.addAll(child.liveSet);
 		}
+	}
+	
+	private BasicBlock getWhileBodyBlock(BasicBlock whileJoin) {
+		BasicBlock whileBody = null;
+		for(BasicBlock child : whileJoin.controlFlow) {
+			if (child.blockType.equals(WHILE_BODY)) {
+				whileBody = child;
+				break;
+			}
+		}
+		
+		return whileBody;
+	}
+	
+	private BasicBlock getWhileFollowBlock(BasicBlock whileJoin) {
+		BasicBlock whileFollow = null;
+		for(BasicBlock child : whileJoin.controlFlow) {
+			if (child.blockType.equals(WHILE_BODY)) {
+				whileFollow = child;
+				break;
+			}
+		}
+		
+		return whileFollow;
 	}
 
 	private void calculateLive3(BasicBlock currentBlock, boolean isLeft) {

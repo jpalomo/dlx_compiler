@@ -50,7 +50,7 @@ public class BasicBlock {
 	public List<BasicBlock> parents;
 
 	public enum BlockType {
-		FUNCTION() , WHILE_JOIN(), IF_JOIN(), PROGRAM(), WHILE_FOLLOW(), IF_BODY(), ELSE_BODY()
+		FUNCTION() , WHILE_JOIN(), IF_JOIN(), PROGRAM(), WHILE_FOLLOW(), IF_BODY(), ELSE_BODY(), WHILE_BODY()
 	}
 
 	/**
