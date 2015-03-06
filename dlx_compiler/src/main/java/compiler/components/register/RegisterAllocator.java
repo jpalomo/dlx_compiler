@@ -17,13 +17,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Stack;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import compiler.components.intermediate_rep.BasicBlock;
+import compiler.components.intermediate_rep.Result;
+import compiler.components.intermediate_rep.Result.ResultEnum;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Instruction.OP;
+import compiler.components.parser.Parser;
 
 public class RegisterAllocator {
 	static Logger LOGGER = LoggerFactory.getLogger(RegisterAllocator.class);
@@ -38,14 +42,20 @@ public class RegisterAllocator {
 	Set<Integer> processedBlocks;
 	public InterferenceGraph IGraph;
 	
+	Map<Integer, BasicBlock> blockMap;
+	public Stack<BasicBlock> blockStack;
+	
 	Set<BasicBlock> visited = new HashSet<BasicBlock>();
-
-	public RegisterAllocator(Map<Integer, Instruction> programInstructions, List<Integer> phiInstructionNumbers) {
+	
+	public RegisterAllocator(Map<Integer, Instruction> programInstructions, List<Integer> phiInstructionNumbers, Map<Integer, BasicBlock> blockMap, Stack<BasicBlock> blockStack) {
 		processedBlocks = new HashSet<Integer>();
 		this.programInstructions = programInstructions;
 		this.phiInstructionNumbers = phiInstructionNumbers;
 		this.IGraph = new InterferenceGraph(frequencies);
+		this.blockMap = blockMap;
+		this.blockStack = blockStack;
 	}
+
 
 	public void buildGraphAndAllocate(BasicBlock rootBlock) {
 		leafBlock = rootBlock;
@@ -251,28 +261,168 @@ public class RegisterAllocator {
 		for(int p : phiInstructionNumbers) {
 			
 			Instruction phiIns = programInstructions.get(p);
-			
 			Instruction inst1 = programInstructions.get(phiIns.leftOperand.instrNum);
 			Instruction inst2 = programInstructions.get(phiIns.rightOperand.instrNum);
 			
-			// phi   : (1)    (2)		
+			// phi   :  (1)    (2)		
 			// node1 : node2 node3
+			List<INode> temp = new ArrayList<INode>();
 			
-			INode node1 = IGraph.getNode(phiIns.instNum);
 			
-			if(!inst1.op.equals(OP.CP_CONST)) {
-				INode node2 = IGraph.getNode(inst1.instNum);
+			INode node1 = new INode(phiIns.instNum);
+			// need to check if node is in a cluster first
+			if(IGraph.nodesToClusters.containsKey(node1.nodeNumber)) {
+				while(IGraph.nodesToClusters.containsKey(node1.nodeNumber)) {
+					node1.nodeNumber = IGraph.nodesToClusters.get(node1.nodeNumber).nodeNumber;
+				}
+				node1 = IGraph.getNode(node1.nodeNumber);
+				temp.add(node1);
+			} 
+			else {
+				node1 = IGraph.getNode(phiIns.instNum);
+				temp.add(node1);
 			}
 			
-			if(!inst2.op.equals(OP.CP_CONST)) {
-				INode node3 = IGraph.getNode(inst2.instNum);
+			if(inst1 != null && !inst1.op.equals(OP.CP_CONST)) {
+				INode node2 = new INode(inst1.instNum);
+				// need to check if node is in a cluster first
+				if(IGraph.nodesToClusters.containsKey(node2.nodeNumber)) {
+					while(IGraph.nodesToClusters.containsKey(node2.nodeNumber)) {
+						node2.nodeNumber = IGraph.nodesToClusters.get(node2.nodeNumber).nodeNumber;
+					}
+					node2 = IGraph.getNode(node2.nodeNumber);
+					temp.add(node2);
+				} 
+				else {
+					node2 = IGraph.getNode(inst1.instNum);
+					temp.add(node2);
+				}
 			}
 			
-			// CONTINUE HERE
+			if(inst2 != null && !inst2.op.equals(OP.CP_CONST)) {
+				INode node3 = new INode(inst2.instNum);
+				// need to check if node is in a cluster first
+				if(IGraph.nodesToClusters.containsKey(node3.nodeNumber)) {
+					while(IGraph.nodesToClusters.containsKey(node3.nodeNumber)) {
+						node3.nodeNumber = IGraph.nodesToClusters.get(node3.nodeNumber).nodeNumber;
+					}
+					node3 = IGraph.getNode(node3.nodeNumber);
+					temp.add(node3);
+				} 
+				else {
+					node3 = IGraph.getNode(inst2.instNum);
+					temp.add(node3);
+				}
+			}
+			
 			// check the register value assigned to each node
-			
+			if(temp.size() == 1) {
+				// means we the two terms in the phi are constant instructions, so just remove the phi
+				removePhiInstruction(phiIns);
+			} 
+			else if (temp.size() == 2) {
+				// the case that only two things are in there, one of the two phi parameters are a constant, the other is not
+				if (temp.get(0).registerNumber == temp.get(1).registerNumber) {
+					// they both match, thus remove the phi
+					removePhiInstruction(phiIns);
+				} 
+				else {
+					// need to insert a move, then get rid of phi instruction
+					insertMoveInstruction(phiIns, temp.get(0), temp.get(1));
+					removePhiInstruction(phiIns);
+				}
+			}
+			else if (temp.size() == 3){
+				// the case of three things to compare
+				if(temp.get(0).registerNumber == temp.get(1).registerNumber) {
+					if(temp.get(0).registerNumber == temp.get(2).registerNumber) {
+						// they are all okay, remove phi
+						removePhiInstruction(phiIns);
+					} 
+					else {
+						// introduce move for second parameter (right side), then remove the phi instruction
+						insertMoveInstruction(phiIns, temp.get(0), temp.get(2));
+						removePhiInstruction(phiIns);
+					}
+				}
+				else
+				{
+					// introduce move for first parameter in phi instruction (left side)
+					insertMoveInstruction(phiIns, temp.get(0), temp.get(1));
+					
+					if(temp.get(0).registerNumber != temp.get(2).registerNumber) {
+						// introduce move for second parameter in phi instruction (right side)
+						insertMoveInstruction(phiIns, temp.get(0), temp.get(2));
+					} 
+					// remove phi instruction
+					removePhiInstruction(phiIns);
+					
+				}
+			}
+		}
+	}
+	
+	private void removePhiInstruction(Instruction phiInstruction) {
+		
+		BasicBlock block = blockMap.get(phiInstruction.blockNumber);
+		block.phiInstructions.remove(Integer.valueOf(phiInstruction.instNum));
+		
+		programInstructions.remove(Integer.valueOf(phiInstruction.instNum));
+		LOGGER.debug("Removed phi instruction number {}", phiInstruction.instNum);
+		
+	}
+	
+	private void insertMoveInstruction(Instruction phiInstruction, INode phiNode, INode node) {
+		
+		// 1. find which side to insert move
+		boolean left = false;
+		if(phiInstruction.leftOperand.instrNum == node.nodeNumber) {
+			left = true;
+		} else if (phiInstruction.rightOperand.instrNum == node.nodeNumber) {
+			left = false;
 		}
 		
+		// 2. find which block the phi instruction is in
+		BasicBlock block = blockMap.get(phiInstruction.blockNumber);
+		
+		// 3. find the block to insert it, then insert as last instruction for program instructions of block
+		if(block.blockType.equals(IF_JOIN)) {
+			if(left) {
+				for(BasicBlock parent : block.parents) {
+					if (parent.blockType.equals(IF_BODY)) {
+						Instruction ins = new Instruction(OP.MOVE);
+						ins.leftOperand = new Result(ResultEnum.REGISTER);
+						ins.leftOperand.registerNum = node.registerNumber;
+						ins.rightOperand = new Result(ResultEnum.REGISTER);
+						ins.rightOperand.registerNum = phiNode.registerNumber;
+						blockStack.add(parent);
+						Instruction.addInstruction(ins);
+						blockStack.pop();
+						LOGGER.debug("Added move instruction: MOVE R{} R{} to block {}", node.registerNumber, phiNode.registerNumber, parent.blockNumber);
+						break;
+					}
+				}
+			} 
+			else {
+				for(BasicBlock parent : block.parents) {
+					if (parent.blockType.equals(ELSE_BODY) || parent.blockType.equals(PROGRAM)) {
+						Instruction ins = new Instruction(OP.MOVE);
+						ins.leftOperand = new Result(ResultEnum.REGISTER);
+						ins.leftOperand.registerNum = node.registerNumber;
+						ins.rightOperand = new Result(ResultEnum.REGISTER);
+						ins.rightOperand.registerNum = phiNode.registerNumber;
+						blockStack.add(parent);
+						Instruction.addInstruction(ins);
+						blockStack.pop();
+						LOGGER.debug("Added move instruction: MOVE R{} R{} to block {}", node.registerNumber, phiNode.registerNumber, parent.blockNumber);
+						break;
+					}
+				}
+			}
+		}
+		else if (block.blockType.equals(WHILE_JOIN)) {
+			
+		}
 		
 	}
 	

@@ -11,13 +11,14 @@ public class Result {
 	public String conditionValue = null;  //TODO what will this get set to?
 	public Integer instrNum = null;
 	public String funcName = null;
+	public Integer registerNum = null;
 
 	public List<Result> arrayExprs = null;
 
 	public static final Result EMPTY_RESULT = new Result(ResultEnum.EMPTY);
 	
 	public enum ResultEnum {
-		FUNCTION(), CONSTANT(),  VARIABLE(), CONDITION(), INSTR(), EMPTY();
+		FUNCTION(), CONSTANT(),  VARIABLE(), CONDITION(), INSTR(), EMPTY(), REGISTER();
 	} 
 
 	public Result(ResultEnum type){
@@ -55,6 +56,9 @@ public class Result {
 		}
 		if(type.equals(ResultEnum.EMPTY)) {
 			return "";
+		}
+		if(type.equals(ResultEnum.REGISTER)) {
+			return "R" + registerNum.toString();
 		}
 		else
 			return super.toString();
