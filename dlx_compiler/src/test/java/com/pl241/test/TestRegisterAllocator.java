@@ -487,16 +487,21 @@ public class TestRegisterAllocator {
 	public void testIfElse() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_else.txt"); 
 		parser.parse();
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, true);
 		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
 		regAlloc.buildGraphAndAllocate(parser.root); 
 		print(parser, "if_else.txt.vcg");
-		runXVCG("if_else.txt.vcg");
+		printInterferenceGraph("if_else.txt.vcg", regAlloc.IGraph);
+		runXVCG("if_else.txt.vcg"); 
 	}
 
 	@Test
 	public void testIfIf() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_if.txt"); 
 		parser.parse();
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, true);
 		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
 		regAlloc.buildGraphAndAllocate(parser.root); 
 		print(parser, "if_if.txt.vcg");
@@ -507,6 +512,8 @@ public class TestRegisterAllocator {
 	public void testIfElseIfElseIfElse() throws ParsingException, IOException {
 		Parser parser = new Parser("src/test/resources/unit_tests/if_else_if_else_else.txt"); 
 		parser.parse();
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, true);
 		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
 		regAlloc.buildGraphAndAllocate(parser.root); 
 		print(parser, "if_else_if_else_else.txt.vcg");
@@ -517,6 +524,8 @@ public class TestRegisterAllocator {
 	public void testNestedWhile() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/unit_tests/nested_while.txt"); 
 		parser.parse();
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, true);
 		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "nested_while.txt.vcg");
@@ -528,6 +537,8 @@ public class TestRegisterAllocator {
 	public void arrayIfElse() throws ParsingException, IOException{
 		Parser parser = new Parser("src/test/resources/unit_tests/array_if_else.txt"); 
 		parser.parse();
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, true);
 		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
 		regAlloc.buildGraphAndAllocate(parser.root);
 		print(parser, "array_if_else.txt.vcg");

@@ -88,7 +88,7 @@ public class RegisterAllocator {
 				clusterNodes.add(new INode(phiInstructionNum));
 			}
 
-			if(!inst1.op.equals(OP.CP_CONST)) {
+			if(inst1 != null && !inst1.op.equals(OP.CP_CONST)) {
 				INode node;
 				if(IGraph.nodesToClusters.containsKey(inst1.instNum)) {
 					node = IGraph.nodesToClusters.get(inst1.instNum);
@@ -116,7 +116,7 @@ public class RegisterAllocator {
 				}
 			}
 
-			if(! inst2.op.equals(OP.CP_CONST)) {
+			if(inst2 != null && !inst2.op.equals(OP.CP_CONST)) {
 				// check if the node is in a cluster and assign the cluster to node
 				INode node;
 				if(IGraph.nodesToClusters.containsKey(inst2.instNum)) {
@@ -385,7 +385,7 @@ public class RegisterAllocator {
 		// 2. find which block the phi instruction is in
 		BasicBlock block = blockMap.get(phiInstruction.blockNumber);
 		
-		// 3. find the block to insert it, then insert as last instruction for program instructions of block
+		// 3. find the block to insert it, then insert as last instruction for program instructions of block, if required.
 		if(block.blockType.equals(IF_JOIN)) {
 			if(left) {
 				for(BasicBlock parent : block.parents) {
@@ -421,6 +421,8 @@ public class RegisterAllocator {
 			}
 		}
 		else if (block.blockType.equals(WHILE_JOIN)) {
+			
+			
 			
 		}
 		
@@ -530,9 +532,12 @@ public class RegisterAllocator {
 	}
 
 	private void initializeLiveSet(BasicBlock currentBlock) {
+
 		currentBlock.liveSet = new HashSet<Integer>();
 		for(BasicBlock child : currentBlock.controlFlow) {
-			currentBlock.liveSet.addAll(child.liveSet);
+			if(child.liveSet != null) {
+				currentBlock.liveSet.addAll(child.liveSet);
+			}
 		}
 	}
 	

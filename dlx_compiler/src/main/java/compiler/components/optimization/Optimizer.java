@@ -44,6 +44,7 @@ public class Optimizer {
 
 		if(performCopyProp) {
 			copyPropagation(parser.root);
+			copyPropagation(parser.root);
 		}
 
 		if(performCommonSubExprElim) {
@@ -55,6 +56,7 @@ public class Optimizer {
 		for(Function f : parser.functionList) {
 			if(f.hasBlocks) { 
 				if(performCopyProp) {
+					copyPropagation(f.beginBlockForFunction);
 					copyPropagation(f.beginBlockForFunction);
 				}
 
@@ -111,25 +113,35 @@ public class Optimizer {
 			//get the instruction corresponding to the current instruction we are processing
 			Instruction currentInstruction = optimizedInstructions.get(instructionNo);
 
-			if(currentInstruction.op.equals(MOVE)) {
-				Result valueToPropagate = currentInstruction.leftOperand;
-				Result valueToReplace = currentInstruction.rightOperand;
+			Result valueToPropagate = null; 
+			Result valueToReplace = null;
+			if(currentInstruction.op.equals(MOVE) || currentInstruction.op.equals(CP_CONST)) {
 
-				//if were moving a constant into a variable, we will update the instruction
-				if(currentInstruction.leftOperand.type.equals(CONSTANT)) {
-					//we do not want to propagate the constant, but the instruction
+				if(currentInstruction.op.equals(MOVE)) {
+					valueToPropagate = currentInstruction.leftOperand;
+					valueToReplace = currentInstruction.rightOperand;
+
+					//if were moving a constant into a variable, we will update the instruction
+					if(currentInstruction.leftOperand.type.equals(CONSTANT)) {
+						//we do not want to propagate the constant, but the instruction
+						valueToPropagate = new Result(INSTR);
+						valueToPropagate.instrNum = currentInstruction.instNum;
+						currentInstruction.op = CP_CONST;
+						currentInstruction.rightOperand = EMPTY_RESULT;
+						LOGGER.debug("CP - Found assignment of constant to variable, update instruction {} and propoate an instruction", currentInstruction.instNum, valueToPropagate);
+					}
+					else{
+						//remove the instruction from the block and the global instructions
+						LOGGER.debug("CP - Removing instruction {} because it was propagated.", currentInstruction);
+						removeInstruction(startBlock, instructionNo); 
+					}
+				}
+				else {
 					valueToPropagate = new Result(INSTR);
 					valueToPropagate.instrNum = currentInstruction.instNum;
-					currentInstruction.op = CP_CONST;
-					currentInstruction.rightOperand = EMPTY_RESULT;
-					LOGGER.debug("CP - Found assignment of constant to variable, update instruction {} and propoate an instruction", currentInstruction.instNum, valueToPropagate);
+					valueToReplace = currentInstruction.leftOperand;
 				}
-				else{
-					//remove the instruction from the block and the global instructions
-					LOGGER.debug("CP - Removing instruction {} because it was propagated.", currentInstruction);
-					removeInstruction(startBlock, instructionNo); 
-				}
-
+		
 				//push the value down the current block
 				propagateValueDownBlock(startBlock, currentInstruction.instNum, valueToReplace, valueToPropagate);
 

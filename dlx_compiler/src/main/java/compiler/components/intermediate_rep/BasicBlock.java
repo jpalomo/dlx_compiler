@@ -2,6 +2,7 @@ package compiler.components.intermediate_rep;
 
 import static compiler.components.intermediate_rep.Result.ResultEnum.CONSTANT;
 import static compiler.components.intermediate_rep.Result.ResultEnum.INSTR;
+import static compiler.components.intermediate_rep.Result.ResultEnum.EMPTY;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -122,7 +123,7 @@ public class BasicBlock {
 			int instructionNo = instructions.get(i);
 			Instruction instruction = programInstructions.get(instructionNo);
 
-			if(instruction.op.equals(OP.END) || instruction.op.equals(OP.BRA) ||instruction.op.equals(OP.CP_CONST) || instruction.op.equals(OP.PUSH) || instruction.op.equals(OP.CALL)) {
+			if(instruction.op.equals(OP.END) || instruction.op.equals(OP.BRA) ||instruction.op.equals(OP.CP_CONST) || instruction.op.equals(OP.CALL)) {
 				updateLiveSet(instruction.instNum);
 				continue;
 			}
@@ -138,7 +139,7 @@ public class BasicBlock {
 				}
 			}
 
-			if(instruction.rightOperand.type != CONSTANT) {
+			if(instruction.rightOperand.type != CONSTANT && instruction.rightOperand.type != EMPTY) {
 				//add it to the live set
 				if(instruction.rightOperand.type.equals(INSTR)) {
 					liveSet.add(instruction.rightOperand.instrNum);
