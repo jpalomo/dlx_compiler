@@ -37,6 +37,20 @@ public class InterferenceGraph {
 	public INode getNode(int nodeNum) {
 		return graph.get(Integer.valueOf(nodeNum)); 
 	}
+	
+	public int getRegisterNumber(int nodeNum) {
+	
+		if(nodesToClusters.containsKey(nodeNum)) {
+			while(nodesToClusters.containsKey(nodeNum)) {
+				nodeNum = nodesToClusters.get(nodeNum).nodeNumber;
+			}
+		}
+		
+		INode node = getNode(nodeNum);
+		
+		return node.registerNumber;
+		
+	}
 
 	public void addNodeToGraph(int newNodeNumber) {
 		if(!graph.containsKey(newNodeNumber)) {

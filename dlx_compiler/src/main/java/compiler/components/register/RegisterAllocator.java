@@ -68,8 +68,24 @@ public class RegisterAllocator {
 		buildClusters();
 		colorGraph(IGraph);
 		removePhis(IGraph);
+		//updateInstructionsWithRegisters(IGraph);
 	}
 	
+	private void updateInstructionsWithRegisters(InterferenceGraph IGraph) {
+		for(Instruction i : programInstructions.values()) {
+			if(!i.op.equals(OP.PUSH)) {
+                if(i.leftOperand.type.equals(ResultEnum.INSTR)) {
+                    i.leftOperand.registerNum = IGraph.getRegisterNumber(i.leftOperand.instrNum);
+                }
+                if(i.rightOperand.type.equals(ResultEnum.INSTR)) {
+                	i.rightOperand.registerNum = IGraph.getRegisterNumber(i.rightOperand.instrNum);
+                }
+					
+			}
+		}
+	}
+
+
 	private void buildClusters() {
 		
 		for(int phiInstructionNum : phiInstructionNumbers) {
@@ -233,6 +249,13 @@ public class RegisterAllocator {
 		LOGGER.debug("Assigning register {} to node {}", color, x.nodeNumber);
 		
 		x.registerNumber = color;
+		if(x.nodeNumber < 0) {
+			// it is a cluster, so update all internal nodes to be assigned the same register as the cluster. will be used later when
+			// updating the instruction operands to hold the register numbers
+			for(INode i : x.internalNodes) {
+				i.registerNumber = color;
+			}
+		}
 		
 	}
 
@@ -276,11 +299,15 @@ public class RegisterAllocator {
 					node1.nodeNumber = IGraph.nodesToClusters.get(node1.nodeNumber).nodeNumber;
 				}
 				node1 = IGraph.getNode(node1.nodeNumber);
-				temp.add(node1);
+				if(node1 != null) {
+					temp.add(node1);
+				}
 			} 
 			else {
 				node1 = IGraph.getNode(phiIns.instNum);
-				temp.add(node1);
+				if(node1 != null) {
+					temp.add(node1);
+				}
 			}
 			
 			if(inst1 != null && !inst1.op.equals(OP.CP_CONST)) {
@@ -291,11 +318,15 @@ public class RegisterAllocator {
 						node2.nodeNumber = IGraph.nodesToClusters.get(node2.nodeNumber).nodeNumber;
 					}
 					node2 = IGraph.getNode(node2.nodeNumber);
-					temp.add(node2);
+					if(node2 != null) {
+						temp.add(node2);
+					}
 				} 
 				else {
 					node2 = IGraph.getNode(inst1.instNum);
-					temp.add(node2);
+					if(node2 != null) {
+						temp.add(node2);
+					};
 				}
 			}
 			
@@ -307,16 +338,20 @@ public class RegisterAllocator {
 						node3.nodeNumber = IGraph.nodesToClusters.get(node3.nodeNumber).nodeNumber;
 					}
 					node3 = IGraph.getNode(node3.nodeNumber);
-					temp.add(node3);
+					if(node3 != null) {
+						temp.add(node3);
+					}
 				} 
 				else {
 					node3 = IGraph.getNode(inst2.instNum);
-					temp.add(node3);
+					if(node3 != null) {
+						temp.add(node3);
+					}
 				}
 			}
 			
 			// check the register value assigned to each node
-			if(temp.size() == 1) {
+			if(temp.size() <= 1) {
 				// means we the two terms in the phi are constant instructions, so just remove the phi
 				removePhiInstruction(phiIns);
 			} 
@@ -378,9 +413,7 @@ public class RegisterAllocator {
 		boolean left = false;
 		if(phiInstruction.leftOperand.instrNum == node.nodeNumber) {
 			left = true;
-		} else if (phiInstruction.rightOperand.instrNum == node.nodeNumber) {
-			left = false;
-		}
+		} 
 		
 		// 2. find which block the phi instruction is in
 		BasicBlock block = blockMap.get(phiInstruction.blockNumber);
@@ -421,11 +454,39 @@ public class RegisterAllocator {
 			}
 		}
 		else if (block.blockType.equals(WHILE_JOIN)) {
-			
-			
-			
+			if(left) {
+				for(BasicBlock parent : block.parents) {
+					if(!parent.blockType.equals(WHILE_BODY)) {
+						Instruction ins = new Instruction(OP.MOVE);
+						ins.leftOperand = new Result(ResultEnum.REGISTER);
+						ins.leftOperand.registerNum = node.registerNumber;
+						ins.rightOperand = new Result(ResultEnum.REGISTER);
+						ins.rightOperand.registerNum = phiNode.registerNumber;
+						blockStack.add(parent);
+						Instruction.addInstruction(ins);
+						blockStack.pop();
+						LOGGER.debug("Added move instruction: MOVE R{} R{} to block {}", node.registerNumber, phiNode.registerNumber, parent.blockNumber);
+						break;
+					}
+				}
+			}
+			else {
+				for(BasicBlock parent : block.parents) {
+					if(parent.blockType.equals(WHILE_BODY)) {
+						Instruction ins = new Instruction(OP.MOVE);
+						ins.leftOperand = new Result(ResultEnum.REGISTER);
+						ins.leftOperand.registerNum = node.registerNumber;
+						ins.rightOperand = new Result(ResultEnum.REGISTER);
+						ins.rightOperand.registerNum = phiNode.registerNumber;
+						blockStack.add(parent);
+						Instruction.addInstruction(ins);
+						blockStack.pop();
+						LOGGER.debug("Added move instruction: MOVE R{} R{} to block {}", node.registerNumber, phiNode.registerNumber, parent.blockNumber);
+						break;
+					}
+				}
+			}
 		}
-		
 	}
 	
 	private void calculateLivenessBottomUp(BasicBlock currentBlock) {
@@ -440,7 +501,7 @@ public class RegisterAllocator {
 		}
 
 		for(BasicBlock child : currentBlock.controlFlow) {
-			if(child.liveSet == null && !blocksToProcess.contains(child)) {
+			if(child.liveSet == null && !blocksToProcess.contains(child) && !processedBlocks.contains(currentBlock.blockNumber)) {
 				//All children need to have their live sets calculated, go to the back
 				//of the queue and wait for them to be processed
 				LOGGER.debug("Got to block number {}, but children had not been processed.  Adding to queue.", currentBlock.blockNumber); 

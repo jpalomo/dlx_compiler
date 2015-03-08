@@ -1,7 +1,7 @@
 // The DLX Virtual Machine
 // chs / mf 2001-08-07
 
-package com.franz.test;
+package compiler.components.codegen;
 
 
 import java.io.*;
@@ -33,7 +33,10 @@ public class DLXSimulator {
     
     public static void execute() throws IOException {
         int origc = 0; // used for F2 instruction RET
-        for (int i = 0; i < 32; i++) { R[i] = 0; };
+        for (int i = 0; i < 32; i++) { 
+        	R[i] = 0; 
+        }; //initialize all registers to zero
+        
         PC = 0; R[30] = MemSize - 1;
 
         try {
@@ -240,7 +243,7 @@ public class DLXSimulator {
     }
 
     // Mnemonic-to-Opcode mapping
-    static final String mnemo[] = {
+    public static final String mnemo[] = {
     "ADD","SUB","MUL","DIV","MOD","CMP","ERR","ERR","OR","AND","BIC","XOR","LSH","ASH","CHK","ERR",
     "ADDI","SUBI","MULI","DIVI","MODI","CMPI","ERRI","ERRI","ORI","ANDI","BICI","XORI","LSHI","ASHI","CHKI","ERR",
     "LDW","LDX","POP","ERR","STW","STX","PSH","ERR","BEQ","BNE","BLT","BGE","BLE","BGT","BSR","ERR",

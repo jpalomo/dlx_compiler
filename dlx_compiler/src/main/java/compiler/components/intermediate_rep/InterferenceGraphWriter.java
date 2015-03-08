@@ -55,7 +55,15 @@ public class InterferenceGraphWriter {
 			emitExitNode();
 			// print the information for the control flow
 			for (int neighbor : node.neighbors) {
-				INode neighborNode = ig.getGraph().get(neighbor);
+				if(ig.nodesToClusters.containsKey(neighbor)) {
+					while(ig.nodesToClusters.containsKey(neighbor)) {
+						INode temp = ig.nodesToClusters.get(neighbor);
+						neighbor = temp.nodeNumber;
+					}	 
+				}
+				else {
+					INode neighborNode = ig.getGraph().get(neighbor);
+				}
 				if(added(addedSources, nodeNum, neighbor)) {
 					continue;
 				}

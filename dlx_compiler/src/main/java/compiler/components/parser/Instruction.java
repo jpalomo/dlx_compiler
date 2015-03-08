@@ -37,7 +37,7 @@ public class Instruction {
 	/** Map holding the instruction number to the actual instruction */
 	public static Map<Integer, Instruction> programInstructions = new HashMap<Integer, Instruction>();
 	public static List<Integer> phiInstructionNumbers = new ArrayList<Integer>();
-
+	
 	/** The program instruction counter */
 	public static Integer PC = 1;
 
@@ -50,6 +50,7 @@ public class Instruction {
 	public Integer instNum;
 	public Integer blockNumber;
 	public InstType type;
+	public Integer registerNum;
 
 	public enum InstType{
 		IC(), CP();
@@ -424,6 +425,8 @@ public class Instruction {
 			if (parser.comingFromLeft) newPhiToAdd.leftOperand.varValue = newPhiToAdd.leftOperand.getVarNameWithoutIndex() + "_" + phiInstruction.instNum;
 			newPhiToAdd.rightOperand = Result.clone(phiInstruction.rightOperand);
 			if (!parser.comingFromLeft) newPhiToAdd.rightOperand.varValue = newPhiToAdd.rightOperand.getVarNameWithoutIndex() + "_" + phiInstruction.instNum;
+			newPhiToAdd.blockNumber = outerMostJoin.blockNumber;
+			phiInstructionNumbers.add(newPhiToAdd.instNum);
 			outerMostJoin.addPhiInstruction(newPhiToAdd.instNum);
 			programInstructions.put(newPhiToAdd.instNum, newPhiToAdd);
 		}
