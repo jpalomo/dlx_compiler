@@ -108,40 +108,44 @@ public class Optimizer {
 	 */
 	private void copyPropagation(BasicBlock startBlock) throws OptimizationException {
 		List<Integer> blockInstructions = startBlock.getInstructions();
-		
+		boolean propogate = false;
 		for(Integer instructionNo : blockInstructions) {
 			//get the instruction corresponding to the current instruction we are processing
 			Instruction currentInstruction = optimizedInstructions.get(instructionNo);
-
-			Result valueToPropagate = null; 
+			Result valueToPropagate = null;
 			Result valueToReplace = null;
-			if(currentInstruction.op.equals(MOVE) || currentInstruction.op.equals(CP_CONST)) {
+			if(currentInstruction.op.equals(MOVE)) {
+				valueToPropagate = currentInstruction.leftOperand;
+				valueToReplace = currentInstruction.rightOperand;
 
-				if(currentInstruction.op.equals(MOVE)) {
-					valueToPropagate = currentInstruction.leftOperand;
-					valueToReplace = currentInstruction.rightOperand;
-
-					//if were moving a constant into a variable, we will update the instruction
-					if(currentInstruction.leftOperand.type.equals(CONSTANT)) {
-						//we do not want to propagate the constant, but the instruction
-						valueToPropagate = new Result(INSTR);
-						valueToPropagate.instrNum = currentInstruction.instNum;
-						currentInstruction.op = CP_CONST;
-						currentInstruction.rightOperand = EMPTY_RESULT;
-						LOGGER.debug("CP - Found assignment of constant to variable, update instruction {} and propoate an instruction", currentInstruction.instNum, valueToPropagate);
-					}
-					else{
-						//remove the instruction from the block and the global instructions
-						LOGGER.debug("CP - Removing instruction {} because it was propagated.", currentInstruction);
-						removeInstruction(startBlock, instructionNo); 
-					}
-				}
-				else {
+				//if were moving a constant into a variable, we will update the instruction
+				if(currentInstruction.leftOperand.type.equals(CONSTANT)) {
+					//we do not want to propagate the constant, but the instruction
 					valueToPropagate = new Result(INSTR);
 					valueToPropagate.instrNum = currentInstruction.instNum;
-					valueToReplace = currentInstruction.leftOperand;
+					currentInstruction.op = CP_CONST;
+					currentInstruction.rightOperand = EMPTY_RESULT;
+					LOGGER.debug("CP - Found assignment of constant to variable, update instruction {} and propoate an instruction", currentInstruction.instNum, valueToPropagate);
 				}
-		
+				else{
+					//remove the instruction from the block and the global instructions
+					LOGGER.debug("CP - Removing instruction {} because it was propagated.", currentInstruction);
+					removeInstruction(startBlock, instructionNo); 
+				}
+				propogate = true;
+			}
+			else if(currentInstruction.op.equals(CP_CONST)) {
+				valueToPropagate = currentInstruction.leftOperand;  //propogate the constant
+				valueToReplace = new Result(INSTR); //replace any references to this instruction
+				valueToReplace.instrNum = currentInstruction.instNum;  
+				propogate = true;
+
+				//removing all CP_CONST
+				LOGGER.debug("CP - Removing instruction {} because it was propagated.", currentInstruction);
+				removeInstruction(startBlock, instructionNo); 
+			}
+
+			if(propogate) {
 				//push the value down the current block
 				propagateValueDownBlock(startBlock, currentInstruction.instNum, valueToReplace, valueToPropagate);
 
@@ -154,9 +158,9 @@ public class Optimizer {
 		}
 
 		//now process the rest of the dominated blocks looking for moves
-        for (BasicBlock dominatee : startBlock.dominatees) {
-        	copyPropagation(dominatee);
-        }
+       for (BasicBlock dominatee : startBlock.dominatees) {
+       	copyPropagation(dominatee);
+       }
 	}
 
 	private void removeInstruction(BasicBlock startBlock, Integer instructionNo) {
@@ -219,7 +223,7 @@ public class Optimizer {
 	private void updateInstructionValues(Instruction instruction,  Result valueToReplace, Result valueToPropagate) {
 		Result previousOperand = null;
 
-		Instruction checkInstruction = optimizedInstructions.get(valueToPropagate.instrNum);
+		//Instruction checkInstruction = optimizedInstructions.get(valueToPropagate.instrNum);
 /*		if(checkInstruction.op.equals(CP_CONST) && instruction.op.equals(PHI)){
 
 			if(instruction.leftOperand.equals(valueToReplace)) {
@@ -328,4 +332,4 @@ public class Optimizer {
 			propagateValueThroughPhis(valueToReplace, valueToPropagate);
 		}
 	} 
-} 
+}
