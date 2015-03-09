@@ -176,9 +176,9 @@ public class TestRegisterAllocator {
 		optimizer.optimize(true, true);
 		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
 		regAlloc.buildGraphAndAllocate(parser.root);
-		//print(parser, "test008.txt.vcg");
+		print(parser, "test008.txt.vcg");
 		printInterferenceGraph("test008.txt.vcg", regAlloc.IGraph);
-		//runXVCG("test008.txt.vcg"); 
+		runXVCG("test008.txt.vcg"); 
 	}
 
 	@Test //TODO ifs are generating empty blocks 
@@ -202,9 +202,9 @@ public class TestRegisterAllocator {
 		optimizer.optimize(true, true);
 		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
 		regAlloc.buildGraphAndAllocate(parser.root);
-		//print(parser, "test010.txt.vcg");
+		print(parser, "test010.txt.vcg");
 		printInterferenceGraph("test010.txt.vcg", regAlloc.IGraph);
-		//runXVCG("test010.txt.vcg"); 
+		runXVCG("test010.txt.vcg"); 
 
 	}
 

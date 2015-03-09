@@ -11,7 +11,8 @@ public class Result {
 	public String conditionValue = null;  //TODO what will this get set to?
 	public Integer instrNum = null;
 	public String funcName = null;
-	public Integer registerNum = null;
+	public Integer registerNum = 1;
+	public Integer dlxInsNum = null;
 
 	public List<Result> arrayExprs = null;
 

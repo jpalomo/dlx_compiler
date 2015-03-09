@@ -10,6 +10,7 @@ import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_JO
 import static compiler.components.intermediate_rep.BasicBlock.BlockType.WHILE_BODY;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -68,7 +69,7 @@ public class RegisterAllocator {
 		buildClusters();
 		colorGraph(IGraph);
 		removePhis(IGraph);
-		//updateInstructionsWithRegisters(IGraph);
+		updateInstructionsWithRegisters(IGraph);
 	}
 	
 	private void updateInstructionsWithRegisters(InterferenceGraph IGraph) {
@@ -76,15 +77,41 @@ public class RegisterAllocator {
 			if(!i.op.equals(OP.PUSH)) {
                 if(i.leftOperand.type.equals(ResultEnum.INSTR)) {
                     i.leftOperand.registerNum = IGraph.getRegisterNumber(i.leftOperand.instrNum);
+                    if(!i.op.equals(OP.CMP)) {
+                    	i.registerNum = i.rightOperand.registerNum;
+                    }
                 }
                 if(i.rightOperand.type.equals(ResultEnum.INSTR)) {
                 	i.rightOperand.registerNum = IGraph.getRegisterNumber(i.rightOperand.instrNum);
+                	if(i.rightOperand.registerNum == -1) {
+                		List<Integer> progIntsnum = getOrderedInstructions(programInstructions);
+                		i.rightOperand.registerNum = progIntsnum.indexOf(i.rightOperand.instrNum);
+                	}
+                	i.registerNum = i.rightOperand.registerNum;
                 }
-					
 			}
 		}
 	}
 
+	private List<Integer> getOrderedInstructions(Map<Integer, Instruction> programInstructions) {
+		
+		List<Integer> ins = new ArrayList<Integer>();
+		Set<Integer> instNums = programInstructions.keySet();
+
+		ins = new ArrayList<Integer>(instNums);
+		Collections.sort(ins);
+		
+		for(Instruction i : programInstructions.values()) {
+			if(i.op.equals(OP.CP_CONST)) {
+				ins.remove(Integer.valueOf(i.instNum));
+			}
+			if(i.op.equals(OP.BRA)) {
+				i.leftOperand.dlxInsNum = ins.indexOf(i.leftOperand.instrNum);
+			}
+		}
+		
+		return ins;
+	}
 
 	private void buildClusters() {
 		
@@ -197,6 +224,10 @@ public class RegisterAllocator {
 	
 	public void colorGraph(InterferenceGraph ig) {
 		// choose arbitrary node with fewer than N colors, else get lowest cost node (findeNodeWithEdgesLess does both searches for us already)
+		if(ig.isGraphEmpty()) {
+			return;
+		}
+		
 		int N = 8;
 		INode x = ig.findNodeWithEdgesLess(N);
 		// check if x is a cluster and update its neighbors
@@ -256,6 +287,10 @@ public class RegisterAllocator {
 				i.registerNumber = color;
 			}
 		}
+		else {
+			programInstructions.get(x.nodeNumber).registerNum = color;
+		}
+		
 		
 	}
 

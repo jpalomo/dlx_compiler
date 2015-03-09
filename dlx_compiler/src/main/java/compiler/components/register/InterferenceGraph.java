@@ -47,7 +47,9 @@ public class InterferenceGraph {
 		}
 		
 		INode node = getNode(nodeNum);
-		
+		if(node == null) {
+			return -1;
+		}
 		return node.registerNumber;
 		
 	}

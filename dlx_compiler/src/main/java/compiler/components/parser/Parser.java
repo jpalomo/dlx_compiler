@@ -453,6 +453,7 @@ public class Parser {
 		
 		expect(Kind.DO);
 
+		
 		comingFromLeft = false;
 		BasicBlock whileBodyBlock = createBasicBlock(WHILE_BODY);  
 		blockStack.push(whileBodyBlock);
@@ -492,6 +493,12 @@ public class Parser {
 		Result result = new Result(ResultEnum.INSTR);
 		result.instrNum = Instruction.PC-1;
 		comingFromLeft = true;
+		
+		blockStack.push(incomingBlock);
+		updatePhis();
+		blockStack.pop();
+		
+		
 		return result;
 	}
 

@@ -29,5 +29,37 @@ public class TestDLXCodeGen {
 		DLXSimulator.load(codeGenerator.getInstructionWords());
 		DLXSimulator.execute();
 	}
+	
+	@Test
+	public void test008() throws ParsingException, IOException{
+		Parser parser = new Parser("src/test/resources/test008.txt"); 
+		parser.parse();
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, true);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
+		regAlloc.buildGraphAndAllocate(parser.root);
+
+		DLXCodeGen codeGenerator = new DLXCodeGen(Instruction.programInstructions);
+		codeGenerator.generateAssembly();
+
+		DLXSimulator.load(codeGenerator.getInstructionWords());
+		DLXSimulator.execute();
+	}
+	
+	@Test
+	public void test017() throws ParsingException, IOException{
+		Parser parser = new Parser("src/test/resources/test017.txt"); 
+		parser.parse();
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, true);
+		RegisterAllocator regAlloc = new RegisterAllocator(Instruction.programInstructions, Instruction.phiInstructionNumbers, parser.blockMap, parser.blockStack);
+		regAlloc.buildGraphAndAllocate(parser.root);
+
+		DLXCodeGen codeGenerator = new DLXCodeGen(Instruction.programInstructions);
+		codeGenerator.generateAssembly();
+
+		DLXSimulator.load(codeGenerator.getInstructionWords());
+		DLXSimulator.execute();
+	}
 
 }

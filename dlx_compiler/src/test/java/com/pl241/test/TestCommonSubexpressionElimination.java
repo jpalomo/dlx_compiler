@@ -12,6 +12,7 @@ import compiler.components.parser.Function;
 import compiler.components.parser.Instruction;
 import compiler.components.parser.Parser;
 import compiler.components.parser.ParsingException;
+import compiler.components.register.RegisterAllocator;
 
 public class TestCommonSubexpressionElimination{
 	private static String VCG_OUTPUT_DIR = "src/test/resources/cse/";
@@ -377,5 +378,14 @@ public class TestCommonSubexpressionElimination{
 		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
 		optimizer.optimize(true, true);
 		print(parser, "array_if_else.txt.vcg");
+	}
+	
+	@Test
+	public void testIfElse() throws ParsingException, IOException {
+		Parser parser = new Parser("src/test/resources/unit_tests/if_else.txt"); 
+		parser.parse();
+		Optimizer optimizer = new Optimizer(parser, parser.getPhiInstructionNumbers(), parser.getProgramInstructions());;
+		optimizer.optimize(true, true);
+		print(parser, "if_else.txt.vcg");
 	}
 }

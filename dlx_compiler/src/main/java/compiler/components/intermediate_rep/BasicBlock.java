@@ -169,7 +169,7 @@ public class BasicBlock {
 	private void updateLiveSet(int instNum) {
 		Set<Integer> copySet = new HashSet<Integer>(liveSet);
 		for(int instruction : copySet) {
-			if(instruction >= instNum) {
+			if(instruction > instNum) {
 				liveSet.remove(instruction);
 			}
 		} 

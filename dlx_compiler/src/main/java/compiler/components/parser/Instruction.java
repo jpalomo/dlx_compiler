@@ -50,7 +50,7 @@ public class Instruction {
 	public Integer instNum;
 	public Integer blockNumber;
 	public InstType type;
-	public Integer registerNum;
+	public Integer registerNum = 1;
 
 	public enum InstType{
 		IC(), CP();
@@ -300,7 +300,9 @@ public class Instruction {
 
 	    //Go through each on of the function arguments and if it is an array, load it, 
 	    //otherwise push it on the stack as a variable or constant
+		Result arg2 = null;
 	    for(Result arg: funcArguments) {
+	           arg2 = Result.clone(arg);
 	       if(arg.arrayExprs.size() > 0) {
 	           Variable var = scopedSymbols.get(arg.varValue);
 	           loadArrayIndex(var, arg);
@@ -309,10 +311,7 @@ public class Instruction {
 	           Instruction push = new Instruction(OP.PUSH, Result.clone(instResult), Result.EMPTY_RESULT);
 	           addInstruction(push);
 	       }
-	       else {
-	    	   //TODO this needs to be fixed? -> currently not working because it tries to get the 
-	    	   //SSA name from the map
-
+	       else  if(!predefined.contains(function.funcName)){
 	           Instruction push = new Instruction(OP.PUSH, Result.clone(arg), Result.EMPTY_RESULT); 
 	           addInstruction(push);
 	       }
@@ -322,10 +321,24 @@ public class Instruction {
 	    if(!predefined.contains(function.funcName)) {
 	    	Instruction saveStatus = new Instruction(OP.SAVE_STATUS, EMPTY_RESULT, EMPTY_RESULT);
 	    	addInstruction(saveStatus);
+			Instruction funcCallInst = new Instruction(OP.CALL, function, Result.EMPTY_RESULT);
+			addInstruction(funcCallInst);
+
+	    }
+	    else {
+	    	OP op = OP.WRITE;
+
+	    	if(function.funcName.equals("read")) {
+	    		op = OP.READ;
+	    	}
+	    	else if(function.funcName.equals("writeNL")) {
+	    		op = OP.WLN;
+	    	}
+			Instruction funcCallInst = new Instruction(op, arg2, Result.EMPTY_RESULT);
+			addInstruction(funcCallInst);
+
 	    }
 
-		Instruction funcCallInst = new Instruction(OP.CALL, function, Result.EMPTY_RESULT);
-		addInstruction(funcCallInst);
 		// TODO fix this so that it can take in any kind of expression for
 		// funcParams //particularly pushing a poppings on to the stack
 	}

@@ -44,7 +44,7 @@ public class Optimizer {
 
 		if(performCopyProp) {
 			copyPropagation(parser.root);
-			copyPropagation(parser.root);
+			//copyPropagation(parser.root);
 		}
 
 		if(performCommonSubExprElim) {
@@ -57,7 +57,7 @@ public class Optimizer {
 			if(f.hasBlocks) { 
 				if(performCopyProp) {
 					copyPropagation(f.beginBlockForFunction);
-					copyPropagation(f.beginBlockForFunction);
+					//copyPropagation(f.beginBlockForFunction);
 				}
 
 				if(performCommonSubExprElim) {
@@ -214,6 +214,7 @@ public class Optimizer {
 				continue;
 			}
 			updateInstructionValues(phiInstruction, valueToReplace, valueToPropagate); 
+			
 		}
 	} 
 
@@ -223,22 +224,6 @@ public class Optimizer {
 	private void updateInstructionValues(Instruction instruction,  Result valueToReplace, Result valueToPropagate) {
 		Result previousOperand = null;
 
-		//Instruction checkInstruction = optimizedInstructions.get(valueToPropagate.instrNum);
-/*		if(checkInstruction.op.equals(CP_CONST) && instruction.op.equals(PHI)){
-
-			if(instruction.leftOperand.equals(valueToReplace)) {
-				previousOperand = Result.clone(instruction.leftOperand);
-				instruction.leftOperand = Result.clone(checkInstruction.leftOperand);
-				LOGGER.debug("Updated left operand of phi instruction number {} from {} to {}", instruction.instNum, previousOperand, instruction.leftOperand);
-			}
-
-			if(instruction.rightOperand.equals(valueToReplace)) {
-				previousOperand = Result.clone(instruction.rightOperand); 
-				instruction.rightOperand = Result.clone(checkInstruction.leftOperand);
-				LOGGER.debug("Updated right operand of phi instruction number {} from {} to {}", instruction.instNum, previousOperand, instruction.rightOperand);
-			}	
-			return;
-		}*/
 		if(instruction.leftOperand.equals(valueToReplace)) {
 			previousOperand = Result.clone(instruction.leftOperand);
 			instruction.leftOperand = Result.clone(valueToPropagate);

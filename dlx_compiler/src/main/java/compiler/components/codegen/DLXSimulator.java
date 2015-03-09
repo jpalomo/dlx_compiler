@@ -446,6 +446,7 @@ public class DLXSimulator {
             System.out.println("DLX.assemble: the only instruction without arguments is WRL!");
             bug(1);
         } 
+        System.out.println(mnemo[op]);
         return F1(op,0,0,0);
     }
     
@@ -454,19 +455,24 @@ public class DLXSimulator {
             
             // F1 Format
             case BSR:
-                return F1(op,0,0,arg1);
+            	System.out.println(mnemo[op] + " " + arg1);
+            	return F1(op,0,0,arg1);
             case RDI:
+            	System.out.println(mnemo[op] + " " + arg1);
                 return F1(op,arg1,0,0);
             case WRD:
             case WRH:
+            	System.out.println(mnemo[op] + " " + arg1);
                 return F1(op,0,arg1,0);
                 
             // F2 Format
             case RET:
+            	System.out.println(mnemo[op] + " " + arg1);
                 return F2(op,0,0,arg1);
             
             // F3 Format
             case JSR:
+            	System.out.println(mnemo[op] + " " + arg1);
                 return F3(op,arg1);
             default:
                 System.out.println("DLX.assemble: wrong opcode for one arg instruction!");
@@ -487,10 +493,12 @@ public class DLXSimulator {
             case BGE:
             case BLE:
             case BGT:
+            	System.out.println(mnemo[op] + " " + arg1 + ", " + arg2);
                 return F1(op,arg1,0,arg2);
                 
             // F2 Format
             case CHK:
+            	System.out.println(mnemo[op] + " " + arg1 + ", " + arg2);
                 return F2(op,arg1,0,arg2);
             
             default:
@@ -520,6 +528,7 @@ public class DLXSimulator {
             case POP:
             case STW:
             case PSH:
+            	System.out.println(mnemo[op] + " " + arg1 + ", " + arg2 + ", " + arg3);
                 return F1(op,arg1,arg2,arg3);
                 
             // F2 Format
@@ -537,6 +546,7 @@ public class DLXSimulator {
             case ASH:
             case LDX:
             case STX:
+            	System.out.println(mnemo[op] + " " + arg1 + ", " + arg2 + ", " + arg3);
                 return F2(op,arg1,arg2,arg3);
             
             default:
